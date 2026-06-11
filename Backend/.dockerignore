@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Logs and databases
+*.sqlite3
+
+# Ignore HF Space folder and frontend (just to be safe, if deployed from parent dir)
+../HF_Space/
+../Frontend/
+
+# Ignored specific to this backend
+.DS_Store

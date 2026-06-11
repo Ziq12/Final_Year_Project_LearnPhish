@@ -1,0 +1,49 @@
+# Build stage
+FROM node:18-alpine AS build
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy the rest of the application code
+COPY . .
+
+# Build the React application for production
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+
+# Copy built files from the build stage to Nginx
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Add fallback routing for React Router and proxy for /api
+RUN echo 'server { \
+    listen       80; \
+    server_name  localhost; \
+    \
+    location / { \
+        root   /usr/share/nginx/html; \
+        index  index.html index.htm; \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
+    location /api/ { \
+        proxy_pass http://backend:8000/api/; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+    } \
+    \
+    error_page   500 502 503 504  /50x.html; \
+    location = /50x.html { \
+        root   /usr/share/nginx/html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

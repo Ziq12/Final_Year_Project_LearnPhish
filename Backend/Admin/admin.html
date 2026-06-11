@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhishGuard — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="login-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.95); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+    <div style="background:var(--surface); padding:32px; border-radius:16px; border:1px solid var(--border); width:100%; max-width:360px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h2 style="font-family:'Syne',sans-serif; color:white; margin-bottom:8px;">Admin Login</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Please enter your API Key</p>
+      <input type="password" id="admin-api-key-input" placeholder="ADMIN_API_KEY" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border-md); background:var(--elevated); color:white; font-family:'JetBrains Mono',monospace; margin-bottom:16px;" onkeydown="if(event.key==='Enter') submitAdminLogin()" />
+      <button onclick="submitAdminLogin()" class="btn btn-indigo" style="width:100%; justify-content:center; padding:12px;">Login</button>
+      <p id="login-error" style="color:var(--rose); font-size:12px; margin-top:12px; display:none;">Invalid API Key</p>
+    </div>
+  </div>
+  <header class="admin-header">
+    <div class="header-left">
+      <a href="/home" class="logo-link">← LearnPhish</a>
+      <div class="header-title">
+        <span class="header-badge">ADMIN</span>
+        <h1>PhishGuard Control</h1>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="cache-status" class="cache-status cache-ok">
+        <span class="cache-dot"></span><span class="cache-label">Cache In-Sync</span>
+      </div>
+      <button class="btn btn-indigo" onclick="syncCache()">⟳ Sync Cache</button>
+      <button class="btn btn-slate" onclick="loadDashboard()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <p class="last-updated">Last updated: <span id="last-updated-time">—</span></p>
+
+    <!-- Zone 1: System Health -->
+    <section class="zone">
+      <div class="zone-header">
+        <h2>📡 System Health <span class="zone-sub">· 24-hour window</span></h2>
+      </div>
+      <div class="stat-grid" id="zone1-cards">
+        <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
+        <div class="stat-card skeleton"></div>
+      </div>
+      <div class="chart-card">
+        <p class="chart-title">7-Day Scan Trend</p>
+        <div class="sparkline-wrap">
+          <svg id="sparkline-svg" width="100%" height="72" viewBox="0 0 700 72" preserveAspectRatio="none"></svg>
+          <div id="sparkline-labels" class="sparkline-labels"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Zone 2: Pipeline Efficiency -->
+    <section class="zone">
+      <div class="zone-header">
+        <h2>⚡ Pipeline Efficiency <span class="zone-sub">· ML Bypass = CPU saved</span></h2>
+      </div>
+      <div class="pipeline-grid">
+        <div class="gauge-card">
+          <p class="chart-title">ML Bypass Rate</p>
+          <div class="gauge-wrap">
+            <svg viewBox="0 0 200 120" width="200" height="120">
+              <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="#1e293b" stroke-width="16" fill="none" stroke-linecap="round"/>
+              <path id="gauge-arc" d="M 20 100 A 80 80 0 0 1 180 100"
+                    stroke="#818cf8" stroke-width="16" fill="none" stroke-linecap="round"
+                    stroke-dasharray="251" stroke-dashoffset="251"
+                    style="transition:stroke-dashoffset 1s ease,stroke 0.5s"/>
+            </svg>
+            <div class="gauge-number" id="bypass-rate-num">—%</div>
+          </div>
+          <p class="gauge-hint" id="bypass-hint">Loading…</p>
+        </div>
+        <div class="chart-card flex-grow">
+          <p class="chart-title">Skip Breakdown <span class="chart-sub">why scans bypassed ML</span></p>
+          <div id="skip-breakdown-bars" class="breakdown-bars"></div>
+          <div class="breakdown-legend">
+            <span class="legend-dot" style="background:#34d399"></span>Whitelist
+            <span class="legend-dot" style="background:#f43f5e"></span>Blacklist
+            <span class="legend-dot" style="background:#f59e0b"></span>Heuristic/GSB
+            <span class="legend-dot" style="background:#818cf8"></span>ML Ran
+          </div>
+        </div>
+      </div>
+      <div id="pipeline-insight" class="insight-card" style="display:none"></div>
+    </section>
+
+    <!-- Zone 3: Educational Telemetry -->
+    <section class="zone">
+      <div class="zone-header">
+        <h2>🎓 Educational Telemetry <span class="zone-sub">· Quiz module</span></h2>
+      </div>
+      <div class="edu-grid">
+        <div class="chart-card flex-grow">
+          <p class="chart-title">Domain Accuracy <span class="chart-sub">correct / total attempts</span></p>
+          <div id="domain-accuracy-bars" class="accuracy-bars"></div>
+        </div>
+        <div class="chart-card">
+          <p class="chart-title">Top Failed Questions</p>
+          <ul id="top-failed-list" class="failed-list">
+            <li class="skeleton-text"></li>
+            <li class="skeleton-text"></li>
+          </ul>
+        </div>
+      </div>
+      <div id="edu-insight" class="insight-card" style="display:none"></div>
+    </section>
+
+    <!-- Zone 4: Dispute Queue -->
+    <section class="zone" id="zone-disputes">
+      <div class="zone-header">
+        <h2>🚩 Dispute Resolution Queue
+          <span class="dispute-badge" id="dispute-count-badge">0</span>
+          <span class="zone-sub">· open false positive reports</span>
+        </h2>
+      </div>
+      <div id="disputes-empty" class="empty-state" style="display:none">
+        <p>✅ No open disputes. All reports have been resolved.</p>
+      </div>
+      <div class="table-wrap" id="disputes-table-wrap">
+        <table class="disputes-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Submitted</th><th>Domain</th>
+              <th>Triggered Rule</th><th>Brand</th><th>Score</th>
+              <th>User Note</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="disputes-tbody">
+            <tr class="skeleton-row"><td colspan="8"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+  <script src="js/admin.js"></script>
+</body>
+</html>

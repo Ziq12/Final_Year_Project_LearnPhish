@@ -1,0 +1,78 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# old script
+old/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+<<<<<<< HEAD
+=======
+
+>>>>>>> 48d27a8a638dffb61a456860c37df3fa006d0e50
+# Model files (large)
+*.pkl
+*.joblib
+*.h5
+*.onnx
+models/
+ml/*.pkl
+
+# Data files (large/sensitive)
+*.csv
+*.parquet
+*.xlsx
+data/
+datasets/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secret keys
+*.key
+*.pem
+secrets/
+
+# Database
+*.db
+*.sqlite
+
+# Frontend build
+node_modules/
+dist/
+build/
+
+# Jupyter notebooks (if contains sensitive data)
+*.ipynb
+
+# Coverage reports
+htmlcov/
+.coverage
+
+*.md
+
+
+HF_Space/learnphish-ml

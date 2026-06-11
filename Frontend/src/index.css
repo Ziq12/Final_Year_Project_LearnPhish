@@ -1,0 +1,179 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Syne', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+
+  /* Base palette */
+  --color-base:     #080f1a;
+  --color-surface:  #0f1929;
+  --color-elevated: #162033;
+  --color-border:   rgba(148,163,184,0.12);
+  --color-border-md: rgba(148,163,184,0.2);
+
+  /* Text */
+  --color-text-primary:   #e2e8f0;
+  --color-text-secondary: #7e8fa6;
+  --color-text-muted:     #4b5a6e;
+
+  /* Semantic */
+  --color-danger:   #f87171;
+  --color-danger-bg: rgba(248,113,113,0.08);
+  --color-danger-border: rgba(248,113,113,0.25);
+
+  --color-warn:     #fbbf24;
+  --color-warn-bg:  rgba(251,191,36,0.08);
+  --color-warn-border: rgba(251,191,36,0.25);
+
+  --color-safe:     #34d399;
+  --color-safe-bg:  rgba(52,211,153,0.08);
+  --color-safe-border: rgba(52,211,153,0.2);
+
+  --color-info:     #38bdf8;
+  --color-info-bg:  rgba(56,189,248,0.08);
+
+  --color-learn:    #f59e0b;
+  --color-learn-bg: rgba(245,158,11,0.1);
+  --color-learn-border: rgba(245,158,11,0.3);
+
+  /* Old compat */
+  --color-danger-50:  #1a0a0a;
+  --color-danger-100: rgba(248,113,113,0.15);
+  --color-danger-500: #f87171;
+  --color-danger-600: #ef4444;
+  --color-danger-700: #fca5a5;
+
+  --color-warn-50:  #1a1200;
+  --color-warn-100: rgba(251,191,36,0.12);
+  --color-warn-500: #fbbf24;
+  --color-warn-600: #f59e0b;
+  --color-warn-700: #fde68a;
+
+  --color-safe-50:  #061510;
+  --color-safe-100: rgba(52,211,153,0.12);
+  --color-safe-500: #34d399;
+  --color-safe-600: #10b981;
+  --color-safe-700: #6ee7b7;
+
+  --color-neutral-850: #162033;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background: var(--color-base);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  ::selection { background: rgba(56,189,248,0.25); color: #e2e8f0; }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .font-mono    { font-family: var(--font-mono); }
+
+  .text-primary   { color: var(--color-text-primary); }
+  .text-secondary { color: var(--color-text-secondary); }
+
+  .bg-base     { background: var(--color-base); }
+  .bg-surface  { background: var(--color-surface); }
+  .bg-elevated { background: var(--color-elevated); }
+
+  .border-subtle { border-color: var(--color-border); }
+  .border-md     { border-color: var(--color-border-md); }
+
+  /* Card base */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+  }
+
+  /* Scan glow pulse */
+  .scan-pulse {
+    animation: scanPulse 2s ease-in-out infinite;
+  }
+  @keyframes scanPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* Staggered item reveal */
+  .item-reveal {
+    animation: itemReveal 0.3s ease-out both;
+  }
+  @keyframes itemReveal {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Verdict entrance */
+  .verdict-enter {
+    animation: verdictEnter 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes verdictEnter {
+    from { opacity: 0; transform: scale(0.97) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* Quiz pop */
+  .quiz-pop {
+    animation: quizPop 0.35s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes quizPop {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Shimmer skeleton */
+  .shimmer {
+    background: linear-gradient(90deg, var(--color-elevated) 25%, rgba(255,255,255,0.05) 50%, var(--color-elevated) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+  }
+
+  /* Scanline effect for verdict banner */
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* Tag/badge */
+  .tag-danger {
+    background: var(--color-danger-bg);
+    border: 1px solid var(--color-danger-border);
+    color: var(--color-danger);
+  }
+  .tag-warn {
+    background: var(--color-warn-bg);
+    border: 1px solid var(--color-warn-border);
+    color: var(--color-warn);
+  }
+  .tag-safe {
+    background: var(--color-safe-bg);
+    border: 1px solid var(--color-safe-border);
+    color: var(--color-safe);
+  }
+  .tag-learn {
+    background: var(--color-learn-bg);
+    border: 1px solid var(--color-learn-border);
+    color: var(--color-learn);
+  }
+
+  /* Focus ring */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--color-info);
+    outline-offset: 2px;
+  }
+}
