@@ -86,6 +86,7 @@ HF_Read_TOKEN = os.getenv("HF_Read_Token")
 async def lifespan(app: FastAPI):
     db.init_pool()
     db.init_redis()   # Upstash Redis lazy cache (whitelist / blacklist)
+    db.warm_up_redis_cache(limit=50000)
     db.load_cache()   # brands + brand_domains only (local memory)
     yield
     db.close_pool()
@@ -134,7 +135,7 @@ app.add_middleware(
     ],
     allow_credentials=False,
     allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type","Authorization", "X-API-KEY"],
 )
 
 # ──────────────────────────────────────────────────────────────

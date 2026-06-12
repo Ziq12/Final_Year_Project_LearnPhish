@@ -187,13 +187,12 @@ def get_cursor(conn=None) -> Generator[psycopg2.extensions.cursor, None, None]:
 # ──────────────────────────────────────────────────────────────
 # Upstash Redis — lazy cache for whitelist / blacklist
 # ──────────────────────────────────────────────────────────────
-_CACHE_TTL  = int(os.getenv("CACHE_TTL_SECONDS", "600"))  # 10 minutes
+# Increased to 24h since lists are curated & CRUD explicitly invalidates stale keys.
+_CACHE_TTL  = int(os.getenv("CACHE_TTL_SECONDS", "86400"))
 _WL_PREFIX  = "lp:wl:"
 _BL_PREFIX  = "lp:bl:"
-_MISS       = "__MISS__"   # sentinel: domain queried but not found
-
+_MISS       = "MISS"   # sentinel: domain queried but not found
 _redis = None  # upstash_redis.Redis instance, set by init_redis()
-
 
 def init_redis() -> None:
     """Connect to Upstash Redis. Safe to call even if credentials are absent."""
@@ -210,7 +209,6 @@ def init_redis() -> None:
     except Exception as exc:
         logger.warning("Upstash Redis init failed: %s", exc)
 
-
 def _rget(key: str) -> Optional[str]:
     """Get a string value from Redis. Returns None on miss or error."""
     if _redis is None:
@@ -221,7 +219,6 @@ def _rget(key: str) -> Optional[str]:
         logger.debug("Redis GET error: %s", exc)
         return None
 
-
 def _rset(key: str, value: str) -> None:
     """Set a string value in Redis with the global TTL. Silent on error."""
     if _redis is None:
@@ -230,7 +227,6 @@ def _rset(key: str, value: str) -> None:
         _redis.set(key, value, ex=_CACHE_TTL)
     except Exception as exc:
         logger.debug("Redis SET error: %s", exc)
-
 
 def _rdel(*keys: str) -> None:
     """Delete one or more Redis keys (cache invalidation). Silent on error."""
@@ -241,7 +237,52 @@ def _rdel(*keys: str) -> None:
     except Exception as exc:
         logger.debug("Redis DEL error: %s", exc)
 
+def warm_up_redis_cache(limit: int = 10000) -> None:
+    """
+    Pre-populate Redis with active whitelist/blacklist entries to prevent cold-start DB hits.
+    Uses a simple loop for maximum compatibility with the upstash-redis Python client.
+    """
+    if _redis is None:
+        logger.info("Skipping Redis cache warm-up: Redis is not initialized.")
+        return
 
+    logger.info(f"Warming up Redis cache with up to {limit} entries...")
+    t0 = time.perf_counter()
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # 1. Fetch Whitelist
+                cur.execute(
+                    "SELECT domain, added_by FROM v_active_whitelist ORDER BY domain LIMIT %s",
+                    (limit,)
+                )
+                wl_rows = cur.fetchall()
+
+                # 2. Fetch Blacklist
+                cur.execute(
+                    "SELECT domain, confidence, source FROM v_active_blacklist ORDER BY domain LIMIT %s",
+                    (limit,)
+                )
+                bl_rows = cur.fetchall()
+
+                # 3. Cache entries using a simple, reliable loop
+                # (This avoids the upstash-redis pipeline.execute() bug)
+                count = 0
+                for row in wl_rows:
+                    _redis.set(f"{_WL_PREFIX}{row['domain']}", _dumps(row), ex=_CACHE_TTL)
+                    count += 1
+                    
+                for row in bl_rows:
+                    _redis.set(f"{_BL_PREFIX}{row['domain']}", _dumps(row), ex=_CACHE_TTL)
+                    count += 1
+
+                elapsed_sec = (time.perf_counter() - t0)
+                logger.info(
+                    f"✅ Redis cache warmed: {count} entries successfully cached in {elapsed_sec:.2f}s"
+                )
+    except Exception as exc:
+        logger.warning(f"Redis cache warm-up failed (app will safely fall back to lazy-loading): {exc}")
 # ──────────────────────────────────────────────────────────────
 # In-memory cache  — brands only (needed for heuristic fuzzy match)
 # Whitelist / blacklist are now served lazily via Redis + DB.
