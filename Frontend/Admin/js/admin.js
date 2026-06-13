@@ -415,3 +415,9 @@ async function loadDashboard() {
 document.addEventListener('DOMContentLoaded', loadDashboard);
 // Auto-refresh every 60 seconds
 setInterval(loadDashboard, 60_000);
+
+window.submitAdminLogin = submitAdminLogin;
+window.syncCache = syncCache;
+window.loadDashboard = loadDashboard;
+window.approveDispute = approveDispute;
+window.rejectDispute = rejectDispute;

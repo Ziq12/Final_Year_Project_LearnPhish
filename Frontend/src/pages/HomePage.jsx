@@ -199,8 +199,6 @@ export default function HomePage() {
                   { icon: '🕵️', name: 'Obfuscation & Cloaking',    desc: 'IP addresses, URL shorteners, punycode, open redirects', color: '#f87171' },
                   { icon: '🏷️', name: 'Identity & Brand Trust',    desc: 'Brand names in subdomains, TLD-swaps, typosquatting',    color: '#fb923c' },
                   { icon: '🧩', name: 'Structural Complexity',     desc: 'URL entropy, abnormal lengths, subdomain padding',      color: '#fbbf24' },
-                  { icon: '📦', name: 'Data Payload & Query',      desc: 'Sensitive query keys, embedded URLs, double extensions', color: '#34d399' },
-                  { icon: '⚠️', name: 'Character & Symbol',        desc: 'Hyphen frequency, @ symbols, unusual character ratios', color: '#38bdf8' },
                   { icon: '🔬', name: 'Advanced Content Patterns', desc: 'Non-standard ports, high digit density, long raw words',  color: '#c084fc' },
                 ].map(({ icon, name, desc, color }) => (
                   <div key={name} className="flex gap-3 px-4 py-3 rounded-xl"
