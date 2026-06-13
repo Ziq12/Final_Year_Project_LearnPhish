@@ -343,7 +343,7 @@ async function rejectDispute(id, blacklist, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   try {
-    const r = await adminFetchin(`${API}/api/feedback/${id}/reject?blacklist=${blacklist}`, { method: 'POST' });
+    const r = await adminFetch(`${API}/api/feedback/${id}/reject?blacklist=${blacklist}`, { method: 'POST' });
     if (!r.ok) throw new Error(await r.text());
     const d = await r.json();
     const msg = blacklist ? `🔒 Rejected & blacklisted` : `❌ Rejected — dispute dismissed`;

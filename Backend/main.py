@@ -109,10 +109,24 @@ async def verify_api_key(x_api_key: str = Header(None)):
         raise HTTPException(
             status_code=401,
             detail={
-                "message":    "Invalid or missing API key. Check your configuration.",
+                "message":    "Invalid or missing API key.",
                 "error_code": "unauthorized",
             },
         )
+# ──────────────────────────────────────────────────────────────
+# NEW: Strict Admin Guard (ONLY Allows ADMIN_API_KEY)
+# ──────────────────────────────────────────────────────────────
+async def verify_admin_key(x_api_key: str = Header(None)):
+    admin_key = os.getenv("ADMIN_API_KEY")
+    if not x_api_key or x_api_key != admin_key:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Forbidden: Admin privileges required.",
+                "error_code": "admin_only"
+            }
+        )
+    return x_api_key
 
 app = FastAPI(
     title="LearnPhish",
@@ -1203,15 +1217,15 @@ class FalsePositiveReport(BaseModel):
     notes: str = ""
 
 
-@app.get("/api/whitelist",  tags=["Admin"])
+@app.get("/api/whitelist",  tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def get_whitelist(limit: int = 100, offset: int = 0):
     return db.list_whitelist(limit, offset)
 
-@app.post("/api/whitelist", tags=["Admin"])
+@app.post("/api/whitelist", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def add_whitelist(entry: WhitelistEntry):
     return db.add_to_whitelist(entry.domain, entry.added_by)
 
-@app.delete("/api/whitelist/{domain}", tags=["Admin"])
+@app.delete("/api/whitelist/{domain}", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def delete_whitelist(domain: str):
     ok = db.remove_from_whitelist(domain)
     if not ok:
@@ -1219,17 +1233,17 @@ def delete_whitelist(domain: str):
     return {"removed": domain}
 
 
-@app.get("/api/blacklist",  tags=["Admin"])
+@app.get("/api/blacklist",  tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def get_blacklist(limit: int = 100, offset: int = 0):
     return db.list_blacklist(limit, offset)
 
-@app.post("/api/blacklist", tags=["Admin"])
+@app.post("/api/blacklist", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def add_blacklist(entry: BlacklistEntry):
     return db.add_to_blacklist(
         entry.domain, entry.confidence, entry.source
     )
 
-@app.delete("/api/blacklist/{domain}", tags=["Admin"])
+@app.delete("/api/blacklist/{domain}", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def delete_blacklist(domain: str):
     ok = db.remove_from_blacklist(domain)
     if not ok:
@@ -1237,15 +1251,15 @@ def delete_blacklist(domain: str):
     return {"removed": domain}
 
 
-@app.get("/api/brands",  tags=["Admin"])
+@app.get("/api/brands",  tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def get_brands(category: Optional[str] = None):
     return db.list_brands(category)
 
-@app.post("/api/brands", tags=["Admin"])
+@app.post("/api/brands", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def add_brand(entry: BrandEntry):
     return db.add_brand(entry.name, entry.display_name, entry.category)
 
-@app.post("/api/brands/domains", tags=["Admin"])
+@app.post("/api/brands/domains", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def add_brand_domain(entry: BrandDomainEntry):
     return db.add_brand_domain(entry.brand_name, entry.domain, entry.is_primary)
 
@@ -1258,7 +1272,7 @@ def submit_false_positive(report: FalsePositiveReport):
         report.user_feedback, report.notes,
     )
 
-@app.post("/api/cache/reload", tags=["Admin"])
+@app.post("/api/cache/reload", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def reload_cache():
     """Reload brand data from DB. Whitelist/blacklist are in Redis — they expire automatically."""
     db.load_cache()
@@ -1546,7 +1560,7 @@ async def extension_predict(request: Request, body: ExtensionRequest):
 import psycopg2.extras as _pg_extras
 
 
-@app.get("/api/admin/stats", tags=["Admin"])
+@app.get("/api/admin/stats", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def admin_stats():
     """
     Aggregated telemetry for the admin dashboard.
@@ -1674,13 +1688,13 @@ def admin_stats():
 # Feedback list endpoint (admin)
 # ──────────────────────────────────────────────────────────────
 
-@app.get("/api/feedback", tags=["Feedback"])
+@app.get("/api/feedback", tags=["Feedback"], dependencies=[Depends(verify_admin_key)])
 def list_feedback(resolved: Optional[bool] = None, limit: int = 50):
     """List false positive / true positive reports. Filter by resolved status."""
     return db.list_false_positives(resolved=resolved, limit=limit)
 
 
-@app.post("/api/feedback/{fp_id}/approve", tags=["Admin"])
+@app.post("/api/feedback/{fp_id}/approve", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def approve_dispute(fp_id: int):
     """
     Approve a false positive dispute:
@@ -1716,7 +1730,7 @@ def approve_dispute(fp_id: int):
     }
 
 
-@app.post("/api/feedback/{fp_id}/reject", tags=["Admin"])
+@app.post("/api/feedback/{fp_id}/reject", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def reject_dispute(fp_id: int, blacklist: bool = False):
     """
     Reject a dispute (confirm the URL is malicious):
