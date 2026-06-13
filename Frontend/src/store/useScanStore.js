@@ -108,7 +108,9 @@ const useScanStore = create((set, get) => ({
       })
 
       // 3. Define Quiz API call using your centralized helper!
-      const excludeIds = JSON.parse(localStorage.getItem('answered_quiz_ids') || '[]')
+      const rawProgress = localStorage.getItem('LearnPhish_quiz')
+      const progressData = rawProgress ? JSON.parse(rawProgress) : { answered_ids: [] }
+      const excludeIds = progressData.answered_ids || []
       const quizPromise = fetchQuestion("pre_scan", excludeIds)
 
       // 4. Execute both simultaneously

@@ -17,93 +17,81 @@ import QuizCard from './QuizCard'
  * The scan result waits behind the quiz until the user is ready.
  */
 export default function PreScanQuiz({ onDismiss }) {
-  const { progress, recordAnswer } = useQuizProgress()
-
-  const prefetchedQuestion    = useScanStore(s => s.prefetchedQuestion)
-  const setPrescanAnswered    = useScanStore(s => s.setPrescanAnswered)
-  const setPrefetchedQuestion = useScanStore(s => s.setPrefetchedQuestion)
-
-  const [result,  setResult]  = useState(null)
+  const question = useScanStore(s => s.prefetchedQuestion)
+  
+  // 🔥 1. Import the progress hook
+  const { recordAnswer } = useQuizProgress() 
+  
+  const [selectedIndex, setSelectedIndex] = useState(null)
+  const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // Edge case only: if the DB has no questions seeded, dismiss cleanly
-  useEffect(() => {
-    if (prefetchedQuestion === null && onDismiss) {
-      onDismiss()
-    }
-  }, [prefetchedQuestion, onDismiss])
+  if (!question) return null
 
-  // If the user scanned directly from ResultPage (bypassing HomePage), the
-  // pre-fetch never ran and prefetchedQuestion is undefined. Self-fetch a
-  // random domain question so the quiz still shows instead of leaving the
-  // parent stuck on "Scanning… Skip →".
-  useEffect(() => {
-    if (prefetchedQuestion !== undefined) return
-    const DOMAINS = [
-      'Structural Complexity',
-      'Identity & Brand Trust',
-      'Advanced Content Patterns',
-      'Obfuscation & Cloaking',
-    ]
-    const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)]
-    fetchQuestion(domain, progress.answered_ids).then(q => {
-      // null  → no questions in DB; the effect above will auto-dismiss
-      // {...} → question object; component will re-render and show the quiz
-      setPrefetchedQuestion(q ?? null)
-    })
-  }, []) // eslint-disable-line — intentionally runs once on mount
-
-  // undefined = prefetch still in flight → show nothing (prevents empty flash)
-  // null      = no questions in DB     → handled by useEffect above
-  if (!prefetchedQuestion) return null
-
-  const question = prefetchedQuestion
-
-  const handleAnswer = async (selectedIndex) => {
-    if (result || loading) return
+  // 🔥 2. Handle the answer submission
+  const handleOptionClick = async (index) => {
+    if (result || loading) return // Prevent double-clicks
+    
+    setSelectedIndex(index)
     setLoading(true)
-    setPrescanAnswered()
 
-    const res = await submitAnswer(question.id, selectedIndex)
+    // Submit to backend to get the correct answer & explanation
+    const res = await submitAnswer(question.id, index)
+
     if (res) {
-      setResult({ ...res, selected_index: selectedIndex })
+      setResult(res)
+      // 🔥 3. CRITICAL: Save to localStorage so it's excluded next time!
       recordAnswer(question.id, res.is_correct)
     }
+    
     setLoading(false)
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-3">
-        <span
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: 'var(--color-text-muted)' }}>
-          While scanning…
-        </span>
-        {progress.total_answered > 0 && (
-          <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-            Score: {progress.total_correct}/{progress.total_answered}
-          </span>
-        )}
+    <div className="space-y-4">
+      <h3 className="text-base font-bold" style={{ color: 'var(--color-text-primary)' }}>
+        🎓 Quick Question
+      </h3>
+      <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+        {question.question_text}
+      </p>
+
+      <div className="space-y-2">
+        {question.options.map((option, index) => (
+          <button
+            key={index}
+            onClick={() => handleOptionClick(index)}
+            disabled={loading || result}
+            className="w-full text-left text-sm px-4 py-2.5 rounded-lg transition-all"
+            style={{
+              background: selectedIndex === index ? 'rgba(56,189,248,0.1)' : 'var(--color-elevated)',
+              border: `1px solid ${selectedIndex === index ? 'var(--color-info)' : 'var(--color-border)'}`,
+              color: 'var(--color-text-primary)'
+            }}
+          >
+            {option}
+          </button>
+        ))}
       </div>
 
-      <QuizCard
-        question={question}
-        onAnswer={handleAnswer}
-        result={result}
-        isLoading={loading}
-      />
-
-      <div className="mt-3 text-center">
-        <button
-          onClick={onDismiss}
-          className="text-sm transition-opacity"
-          style={{ color: 'var(--color-info)' }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-          {result ? 'See full results →' : 'Skip quiz →'}
-        </button>
-      </div>
+      {/* Show result and explanation after answering */}
+      {result && (
+        <div className="mt-4 p-3 rounded-lg" style={{ background: result.is_correct ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)' }}>
+          <p className="text-xs font-bold mb-1" style={{ color: result.is_correct ? '#34d399' : '#f87171' }}>
+            {result.is_correct ? '✅ Correct!' : '❌ Incorrect'}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            {result.explanation_text}
+          </p>
+          <button 
+            onClick={onDismiss}
+            className="mt-3 text-xs font-semibold px-3 py-1.5 rounded-md"
+            style={{ background: 'var(--color-info)', color: '#020d14' }}
+          >
+            See Scan Results →
+          </button>
+        </div>
+      )}
     </div>
   )
 }
