@@ -379,7 +379,7 @@ def _check_gsb(url: str) -> dict:
 
     clean_url = _normalise_gsb_url(url)
     payload = {
-        "client": {"clientId": "phishguard", "clientVersion": "5.0.0"},
+        "client": {"clientId": "LearnPhish", "clientVersion": "5.0.0"},
         "threatInfo": {
             "threatTypes": [
                 "SOCIAL_ENGINEERING",          # phishing / deceptive sites
