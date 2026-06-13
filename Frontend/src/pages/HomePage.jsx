@@ -4,11 +4,10 @@
 import { useEffect }   from 'react'
 import { useNavigate } from 'react-router-dom'
 import useScanStore    from '../store/useScanStore'
-import { useQuizPrefetch } from '../hooks/useQuizPrefetch'
 import ErrorDisplay    from '../components/result/ErrorDisplay'
 
 export default function HomePage() {
-  useQuizPrefetch()
+  
 
   const error     = useScanStore(s => s.error)
   const reset     = useScanStore(s => s.reset)

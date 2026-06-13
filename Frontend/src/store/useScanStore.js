@@ -2,7 +2,6 @@ import { create } from 'zustand'
 
 // ─────────────────────────────────────────────────────────────────
 // Error type catalogue
-// Each type maps to a distinct UI treatment in ErrorDisplay.jsx
 // ─────────────────────────────────────────────────────────────────
 export const ERROR_TYPES = {
   RATE_LIMIT:           'rate_limit',
@@ -14,18 +13,7 @@ export const ERROR_TYPES = {
   UNKNOWN:              'unknown',
 }
 
-/**
- * parseHttpError(status, body)
- * Converts an HTTP error status code + optional response body
- * into a structured error object for the UI to render.
- *
- * @param {number}      status  HTTP status code (0 = network-level failure)
- * @param {object|null} body    Parsed JSON body from the error response, may be null
- * @param {boolean}     isNetwork  true when fetch() itself threw (no HTTP response)
- * @returns {{ type, message, status, retryAfter? }}
- */
 function parseHttpError(status, body, isNetwork = false) {
-  // Network-level failure: no HTTP response reached the client
   if (isNetwork || status === 0) {
     return {
       type:    ERROR_TYPES.CONNECTION_ERROR,
@@ -34,15 +22,11 @@ function parseHttpError(status, body, isNetwork = false) {
     }
   }
 
-  // Prefer the backend's structured message when present
   const serverMessage = body?.message || null
 
   switch (status) {
     case 429: {
-      // Respect Retry-After from the response body; fall back to 60 s
-      const retryAfter = typeof body?.retry_after === 'number'
-        ? body.retry_after
-        : 60
+      const retryAfter = typeof body?.retry_after === 'number' ? body.retry_after : 60
       return {
         type:       ERROR_TYPES.RATE_LIMIT,
         message:    serverMessage ?? "You're scanning too fast. Please wait before trying again.",
@@ -50,7 +34,6 @@ function parseHttpError(status, body, isNetwork = false) {
         retryAfter,
       }
     }
-
     case 401:
     case 403:
       return {
@@ -58,21 +41,18 @@ function parseHttpError(status, body, isNetwork = false) {
         message: serverMessage ?? 'API authentication failed. Check your configuration.',
         status,
       }
-
     case 422:
       return {
         type:    ERROR_TYPES.INVALID_URL,
         message: serverMessage ?? 'Please enter a valid URL (e.g. https://example.com).',
         status:  422,
       }
-
     case 503:
       return {
         type:    ERROR_TYPES.SERVICE_UNAVAILABLE,
         message: serverMessage ?? 'The ML analysis service is temporarily offline. Try again shortly.',
         status:  503,
       }
-
     default:
       if (status >= 500) {
         return {
@@ -95,32 +75,29 @@ function parseHttpError(status, body, isNetwork = false) {
 const useScanStore = create((set, get) => ({
   url:    '',
   result: null,
-
-  // 'idle' | 'scanning' | 'revealing' | 'complete' | 'error'
   status: 'idle',
-
-  // null | { type, message, status, retryAfter? }
   error:  null,
-
-  // Quiz state — fully decoupled from scan result
+  
   prescanDismissed:   false,
-  prefetchedQuestion: undefined, // populated by useQuizPrefetch on HomePage
+  prefetchedQuestion: undefined, 
 
-  // ── Main scan action ────────────────────────────────────────
+  // ── Main scan action (IMPROVED WITH PROMISE.ALL) ────────────────
   startScan: async (url) => {
+    // 1. Reset state and show loading skeleton for the quiz
     set({
       url,
       status:           'scanning',
       result:           null,
       error:            null,
       prescanDismissed: false,
-      // prefetchedQuestion is intentionally NOT reset — it was pre-fetched on
-      // the HomePage and must survive navigation to Result2Page.
+      prefetchedQuestion: undefined, // Tells Result2Page to show the "Scanning..." loader
     })
 
     try {
       const apiBase = import.meta.env.VITE_API_URL || ''
-      const res = await fetch(`${apiBase}/api/predict`, {
+      
+      // 2. Define Scan API call
+      const scanPromise = fetch(`${apiBase}/api/predict`, {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,20 +106,29 @@ const useScanStore = create((set, get) => ({
         body: JSON.stringify({ url }),
       })
 
-      // Always attempt to parse the body — we need it for structured error messages
-      // even when res.ok is false (the backend now returns { message, error_code, … }).
+      // 3. Define Quiz API call (Fetches in parallel!)
+      // ⚠️ Note: Update '/api/quiz-question' to match your actual backend endpoint
+      const quizPromise = fetch(`${apiBase}/api/quiz-question?url=${encodeURIComponent(url)}`)
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null) // Fail gracefully so it doesn't block the scan if the quiz DB is down
+
+      // 4. Execute both simultaneously
+      const [scanRes, quizQuestion] = await Promise.all([scanPromise, quizPromise])
+
+      // 5. Store the quiz question immediately so the UI can render it
+      set({ prefetchedQuestion: quizQuestion })
+
+      // Always attempt to parse the body for structured error messages
       let body = null
-      try { body = await res.json() } catch (_) { /* ignore parse failure */ }
+      try { body = await scanRes.json() } catch (_) { /* ignore parse failure */ }
 
       // ── Non-2xx: map HTTP status → structured error ──────────
-      if (!res.ok) {
-        set({ error: parseHttpError(res.status, body), status: 'error' })
+      if (!scanRes.ok) {
+        set({ error: parseHttpError(scanRes.status, body), status: 'error' })
         return
       }
 
       // ── 200 but backend signalled failure (legacy / fallback) ─
-      // The new backend raises proper HTTP errors, but guard against
-      // old-style { error: "…" } in case of partial rollout.
       if (body?.error && typeof body.error === 'string') {
         set({
           error:  { type: ERROR_TYPES.SERVER_ERROR, message: body.error, status: 200 },
@@ -152,7 +138,6 @@ const useScanStore = create((set, get) => ({
       }
 
       // ── Success ──────────────────────────────────────────────
-      // Scan result ready — quiz visibility is the component's responsibility.
       set({ result: body, status: 'revealing' })
 
     } catch (err) {
@@ -171,9 +156,7 @@ const useScanStore = create((set, get) => ({
   },
 
   // ── Quiz helpers ─────────────────────────────────────────────
-  /** Called by PreScanQuiz when the user picks an answer (for progress tracking). */
-  setPrescanAnswered: () => {},  // no-op — kept so PreScanQuiz import doesn't break
-
+  setPrescanAnswered: () => {},  
   dismissPrescan:       () => set({ prescanDismissed: true, prefetchedQuestion: undefined }),
   setComplete:          () => set({ status: 'complete' }),
   setPrefetchedQuestion: (q) => set({ prefetchedQuestion: q }),
