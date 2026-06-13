@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { submitAnswer, fetchQuestion } from '../../utils/quizApi'
+import { useState } from 'react'
+import { submitAnswer } from '../../utils/quizApi'
 import { useQuizProgress } from '../../hooks/useQuizProgress'
 import useScanStore from '../../store/useScanStore'
 import QuizCard from './QuizCard'
@@ -19,8 +19,8 @@ import QuizCard from './QuizCard'
 export default function PreScanQuiz({ onDismiss }) {
   const question = useScanStore(s => s.prefetchedQuestion)
   
-  // 🔥 1. Import the progress hook
-  const { recordAnswer } = useQuizProgress() 
+  // 🔥 FIX 1: Destructure `progress` from the hook so it doesn't crash!
+  const { progress, recordAnswer } = useQuizProgress() 
   
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [result, setResult] = useState(null)
@@ -62,9 +62,10 @@ export default function PreScanQuiz({ onDismiss }) {
         )}
       </div>
 
+      
       <QuizCard
         question={question}
-        onAnswer={handleAnswer}
+        onAnswer={handleOptionClick}
         result={result}
         isLoading={loading}
       />
