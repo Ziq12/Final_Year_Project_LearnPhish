@@ -156,7 +156,7 @@ app.add_middleware(
         "https://learnphish.me",          # Your Custom Frontend Domain (no www)
     ],
     allow_credentials=False,
-    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_methods=["POST", "GET", "OPTIONS","DELETE"],
     allow_headers=["Content-Type","Authorization", "X-API-KEY"],
 )
 
@@ -1250,13 +1250,50 @@ def delete_blacklist(domain: str):
     return {"removed": domain}
 
 
-@app.get("/api/brands",  tags=["Admin"], dependencies=[Depends(verify_admin_key)])
+@app.get("/api/brands", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def get_brands(category: Optional[str] = None):
-    return db.list_brands(category)
+    import psycopg2.extras as _pg_extras
+    """Fetches all brands and attaches their associated domains from the brand_domains table."""
+    with db.get_conn() as conn:
+        with conn.cursor(cursor_factory=_pg_extras.RealDictCursor) as cur:
+            # 1. Fetch all brands
+            if category:
+                cur.execute("SELECT name, display_name, category FROM brands WHERE category = %s ORDER BY name", (category,))
+            else:
+                cur.execute("SELECT name, display_name, category FROM brands ORDER BY name")
+            brands = [dict(r) for r in cur.fetchall()]
+            
+            # 2. Fetch all domains and group them by brand name
+            # ✅ FIX: JOIN brand_domains with brands using brand_id to get the name
+            cur.execute("""
+                SELECT b.name AS brand_name, bd.domain 
+                FROM brand_domains bd
+                JOIN brands b ON b.id = bd.brand_id
+            """)
+            domain_map = {}
+            for row in cur.fetchall():
+                b_name = row['brand_name']
+                if b_name not in domain_map:
+                    domain_map[b_name] = []
+                domain_map[b_name].append(row['domain'])
+                
+            # 3. Attach the domains array to each brand object
+            for b in brands:
+                b['domains'] = domain_map.get(b['name'], [])
+                
+            return brands
 
 @app.post("/api/brands", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def add_brand(entry: BrandEntry):
-    return db.add_brand(entry.name, entry.display_name, entry.category)
+    from psycopg2 import errors as pg_errors
+    try:
+        return db.add_brand(entry.name, entry.display_name, entry.category)
+    except pg_errors.CheckViolation:
+        # Catch the database rule violation and return a clean error to the frontend
+        raise HTTPException(
+            status_code=400, 
+            detail="Brand Name must be URL-safe (lowercase, no spaces, use underscores like 'utm_my')."
+        )
 
 @app.post("/api/brands/domains", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def add_brand_domain(entry: BrandDomainEntry):

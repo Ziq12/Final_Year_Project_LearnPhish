@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { submitAnswer } from '../../utils/quizApi'
+import { submitAnswer, fetchQuestion } from '../../utils/quizApi'
 import { useQuizProgress } from '../../hooks/useQuizProgress'
 import useScanStore from '../../store/useScanStore'
 import QuizCard from './QuizCard'
@@ -32,6 +32,26 @@ export default function PreScanQuiz({ onDismiss }) {
       onDismiss()
     }
   }, [prefetchedQuestion, onDismiss])
+
+  // If the user scanned directly from ResultPage (bypassing HomePage), the
+  // pre-fetch never ran and prefetchedQuestion is undefined. Self-fetch a
+  // random domain question so the quiz still shows instead of leaving the
+  // parent stuck on "Scanning… Skip →".
+  useEffect(() => {
+    if (prefetchedQuestion !== undefined) return
+    const DOMAINS = [
+      'Structural Complexity',
+      'Identity & Brand Trust',
+      'Advanced Content Patterns',
+      'Obfuscation & Cloaking',
+    ]
+    const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)]
+    fetchQuestion(domain, progress.answered_ids).then(q => {
+      // null  → no questions in DB; the effect above will auto-dismiss
+      // {...} → question object; component will re-render and show the quiz
+      setPrefetchedQuestion(q ?? null)
+    })
+  }, []) // eslint-disable-line — intentionally runs once on mount
 
   // undefined = prefetch still in flight → show nothing (prevents empty flash)
   // null      = no questions in DB     → handled by useEffect above
