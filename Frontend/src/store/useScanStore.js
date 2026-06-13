@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { fetchQuestion } from '../api/quizApi'
+import { fetchQuestion } from '../utils/quizApi'
 
 // ─────────────────────────────────────────────────────────────────
 // Error type catalogue
