@@ -403,6 +403,167 @@ async function loadDashboard() {
   }
 }
 
+// ── Zone 5: Database CRUD ───────────────────────────────────
+document.querySelectorAll('.db-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.db-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.db-tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        loadCrudData(btn.dataset.tab);
+    });
+});
+
+async function loadCrudData(tab) {
+    try {
+        if (tab === 'whitelist') {
+            const r = await adminFetch(`${API}/api/whitelist?limit=100`);
+            const data = await r.json();
+            document.getElementById('tbody-whitelist').innerHTML = data.map(d => `
+                <tr>
+                    <td class="domain-text">${d.domain}</td>
+                    <td>${d.added_by || 'system'}</td>
+                    <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="whitelist" data-id="${d.domain}">Delete</button></td>
+                </tr>
+            `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+        } 
+        else if (tab === 'blacklist') {
+            const r = await adminFetch(`${API}/api/blacklist?limit=100`);
+            const data = await r.json();
+            document.getElementById('tbody-blacklist').innerHTML = data.map(d => `
+                <tr>
+                    <td class="domain-text">${d.domain}</td>
+                    <td>${d.confidence}</td>
+                    <td>${d.source || 'manual'}</td>
+                    <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="blacklist" data-id="${d.domain}">Delete</button></td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+        } 
+        else if (tab === 'brands') {
+            const r = await adminFetch(`${API}/api/brands`);
+            const data = await r.json();
+            document.getElementById('tbody-brands').innerHTML = data.map(b => `
+                <tr>
+                    <td><strong>${b.name}</strong> <span style="color:var(--text-muted)">(${b.display_name || ''})</span></td>
+                    <td>${b.domains ? b.domains.join(', ') : (b.domain || '-')}</td>
+                    <td><button class="btn btn-rose" onclick="deleteBrand(this)" data-name="${b.name}">Delete</button></td>
+                </tr>
+            `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+        } 
+        else if (tab === 'quiz') {
+            // Load threat domains for dropdown
+            const statsR = await adminFetch(`${API}/api/admin/stats`);
+            const stats = await statsR.json();
+            const threatDomains = stats.zone3.domains.map(d => d.domain);
+            document.getElementById('quiz-domain-select').innerHTML = threatDomains.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            const r = await adminFetch(`${API}/api/quiz/questions?limit=50`);
+            const data = await r.json();
+            document.getElementById('tbody-quiz').innerHTML = data.map(q => `
+                <tr>
+                    <td>#${q.id}</td>
+                    <td><span class="rule-badge">${q.domain}</span></td>
+                    <td style="max-width:400px;">${q.question_text}</td>
+                    <td><button class="btn btn-rose" onclick="deleteItem('quiz', ${q.id})">Delete</button></td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+        }
+    } catch (e) {
+        console.error("CRUD Load Error:", e);
+    }
+}
+
+async function deleteItem(type, idOrDomain) {
+    const type = btn.dataset.type;
+    const idOrDomain = btn.dataset.id;
+    if(!confirm(`Are you sure you want to delete ${idOrDomain}?`)) return
+    let url = '';
+    if (type === 'whitelist') url = `${API}/api/whitelist/${idOrDomain}`;
+    if (type === 'blacklist') url = `${API}/api/blacklist/${idOrDomain}`;
+    if (type === 'quiz') url = `${API}/api/quiz/questions/${idOrDomain}`;
+    
+    const r = await adminFetch(url, { method: 'DELETE' });
+    if (r.ok) {
+        showToast(`Deleted ${idOrDomain}`, 'ok');
+        loadCrudData(type);
+        syncCache(); 
+    } else {
+        showToast('Delete failed', 'err');
+    }
+}
+
+async function deleteBrand(name) {
+    const name = btn.dataset.name;
+    if(!confirm(`Delete brand ${name} and its domains?`)) return;
+    const r = await adminFetch(`${API}/api/brands/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (r.ok) {
+        showToast(`Deleted ${name}`, 'ok');
+        loadCrudData('brands');
+        syncCache();
+    } else {
+        showToast('Delete failed', 'err');
+    }
+}
+
+// Form Submissions
+document.getElementById('form-whitelist').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const domain = e.target.domain.value;
+    const r = await adminFetch(`${API}/api/whitelist`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({domain, added_by: 'admin'})
+    });
+    if(r.ok) { showToast('Whitelisted', 'ok'); e.target.reset(); loadCrudData('whitelist'); syncCache(); }
+});
+
+document.getElementById('form-blacklist').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const domain = e.target.domain.value;
+    const r = await adminFetch(`${API}/api/blacklist`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({domain, confidence: 1.0, source: 'admin'})
+    });
+    if(r.ok) { showToast('Blacklisted', 'ok'); e.target.reset(); loadCrudData('blacklist'); syncCache(); }
+});
+
+document.getElementById('form-brand').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = e.target.name.value;
+    const display_name = e.target.display_name.value;
+    const domain = e.target.domain.value;
+    
+    const r1 = await adminFetch(`${API}/api/brands`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name, display_name, category: 'other'})
+    });
+    const r2 = await adminFetch(`${API}/api/brands/domains`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({brand_name: name, domain, is_primary: true})
+    });
+    
+    if(r1.ok && r2.ok) { showToast('Brand Added', 'ok'); e.target.reset(); loadCrudData('brands'); syncCache(); }
+});
+
+document.getElementById('form-quiz').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = {
+        domain: fd.get('domain'),
+        question_text: fd.get('question_text'),
+        options: [fd.get('opt0'), fd.get('opt1'), fd.get('opt2'), fd.get('opt3')],
+        correct_index: parseInt(fd.get('correct_index')),
+        explanation_text: fd.get('explanation_text')
+    };
+    const r = await adminFetch(`${API}/api/quiz/questions`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    if(r.ok) { showToast('Question Added', 'ok'); e.target.reset(); loadCrudData('quiz'); }
+});
+
+
+
+
 // ── Boot ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', loadDashboard);
 setInterval(loadDashboard, 60_000);
@@ -413,3 +574,5 @@ window.loadDashboard = loadDashboard;
 window.approveDispute = approveDispute;
 window.rejectDispute = rejectDispute;
 window.logout = logout;
+window.deleteItem = deleteItem;
+window.deleteBrand = deleteBrand;

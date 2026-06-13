@@ -390,3 +390,26 @@ body {
   .gauge-card { min-width: unset; width: 100%; }
   .admin-header { padding: 12px 16px; }
 }
+/* ── DB Tabs & CRUD Forms ─────────────────────────────────── */
+.db-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.db-tab {
+    padding: 8px 16px; background: transparent; border: none; color: var(--text-muted);
+    font-family: var(--font-mono); font-size: 12px; cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+.db-tab:hover { color: var(--text); }
+.db-tab.active { color: var(--indigo); border-bottom-color: var(--indigo); }
+.db-tab-content { display: none; }
+.db-tab-content.active { display: block; }
+
+.crud-form {
+    display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+    background: rgba(255,255,255,0.02); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);
+}
+.crud-form-col { flex-direction: column; }
+.crud-form input, .crud-form select, .crud-form textarea {
+    padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 12px; flex: 1; min-width: 150px;
+}
+.crud-form textarea { min-height: 60px; resize: vertical; }
+.crud-form button { flex: none; }

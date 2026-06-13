@@ -147,9 +147,8 @@ register_error_handlers(app)
 # CORS — allow browser extension origins and localhost (for dev)
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"^(chrome-extension://.*|moz-extension://.*)$", 
     allow_origins=[
-        "chrome-extension://*",      # Chrome/Edge extensions
-        "moz-extension://*",         # Firefox extensions
         "http://localhost:5173",      # Vite dev server
         "http://localhost:3000",      # CRA dev server
         "https://final-year-project-learn-phish.vercel.app", # Frontend in Vercel
@@ -1347,8 +1346,68 @@ async def quiz_answer(data: QuizAnswerRequest):
         raise HTTPException(status_code=404, detail="Question not found or inactive.")
     return result
 
+import json
+import psycopg2.extras as _pg_extras
 
+# ── Quiz Questions CRUD ───────────────────────────────────────
+class QuizQuestionEntry(BaseModel):
+    domain: str
+    question_text: str
+    options: list[str]
+    correct_index: int
+    explanation_text: str
 
+@app.get("/api/quiz/questions", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
+def list_quiz_questions(limit: int = 50):
+    with db.get_conn() as conn:
+        with conn.cursor(cursor_factory=_pg_extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT qq.id, qq.question_text, qq.options, qq.correct_index, qq.explanation_text, td.name as domain
+                FROM quiz_questions qq 
+                JOIN threat_domains td ON qq.domain_id = td.id
+                ORDER BY qq.id DESC LIMIT %s
+            """, (limit,))
+            rows = cur.fetchall()
+            for r in rows:
+                if isinstance(r['options'], str):
+                    try: r['options'] = json.loads(r['options'])
+                    except: pass
+            return [dict(r) for r in rows]
+
+@app.post("/api/quiz/questions", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
+def add_quiz_question(entry: QuizQuestionEntry):
+    with db.get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM threat_domains WHERE name = %s", (entry.domain,))
+            row = cur.fetchone()
+            if not row: raise HTTPException(404, "Threat domain not found")
+            domain_id = row[0]
+            cur.execute("""
+                INSERT INTO quiz_questions (domain_id, question_text, options, correct_index, explanation_text, is_active)
+                VALUES (%s, %s, %s, %s, %s, TRUE) RETURNING id
+            """, (domain_id, entry.question_text, json.dumps(entry.options), entry.correct_index, entry.explanation_text))
+            new_id = cur.fetchone()[0]
+            conn.commit()
+    return {"id": new_id, "status": "created"}
+
+@app.delete("/api/quiz/questions/{q_id}", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
+def delete_quiz_question(q_id: int):
+    with db.get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM quiz_questions WHERE id = %s", (q_id,))
+            conn.commit()
+    return {"removed": q_id}
+
+# ── Brands DELETE ─────────────────────────────────────────────
+@app.delete("/api/brands/{brand_name}", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
+def delete_brand(brand_name: str):
+    with db.get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM brand_domains WHERE brand_name = %s", (brand_name,))
+            cur.execute("DELETE FROM brands WHERE name = %s", (brand_name,))
+            conn.commit()
+    db.load_cache()
+    return {"removed": brand_name}
 # ── Pydantic models for the extension endpoint ────────────────────────
 class ExtensionRequest(BaseModel):
     url: str
