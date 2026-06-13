@@ -11,6 +11,7 @@ import ScanForm               from '../components/home/ScanForm'
 import FullURLStrip           from '../components/url/FullURLStrip'
 import PreScanQuiz            from '../components/quiz/PreScanQuiz'
 import FalsePositiveModal     from '../components/result/FalsePositiveModal'
+import ErrorDisplay           from '../components/result/ErrorDisplay'
 
 export default function Result2Page() {
   const navigate = useNavigate()
@@ -23,9 +24,10 @@ export default function Result2Page() {
   const dismissPrescan     = useScanStore(s => s.dismissPrescan)
   const retryScan          = useScanStore(s => s.retryScan)
 
-  // Quiz is shown until the user explicitly dismisses it (Skip or See results).
-  // NOT tied to scan status — runs fully in parallel with the backend call.
-  const showPrescan = !prescanDismissed
+  // Quiz is shown until the user explicitly dismisses it (Skip / See results).
+  // It is also hidden whenever there is an error — no point showing it
+  // while the scan has already failed.
+  const showPrescan = !prescanDismissed && !error
   const scanDone    = status === 'revealing' || status === 'complete'
 
   // If the scan finishes and the DB has no questions (null), auto-dismiss
@@ -61,7 +63,7 @@ export default function Result2Page() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Report button in header — shown whenever scan result exists (both phishing & safe) */}
+            {/* Report button — shown once we have a successful scan result */}
             {scanDone && result && (
               <button onClick={() => setShowReport(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
@@ -85,30 +87,31 @@ export default function Result2Page() {
       <main className="max-w-[1100px] mx-auto px-4 py-6">
         <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 space-y-4 lg:space-y-0">
 
-          {/* ── Left column ───────────────────── */}
+          {/* ── Left column ────────────────────────────────── */}
           <div className="space-y-4 min-w-0">
 
+            {/* Pre-scan quiz — hidden on error, hidden after dismiss */}
             {showPrescan && (
-              <div className="rounded-2xl p-5" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <div className="rounded-2xl p-5"
+                style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                 {prefetchedQuestion
                   ? (
-                    // Question is ready — render the interactive quiz
                     <PreScanQuiz onDismiss={dismissPrescan} />
                   ) : (
-                    // Question still loading (undefined) — show scanning state
-                    // so results never bleed through prematurely
                     <div className="py-6 text-center space-y-2">
                       <div className="flex justify-center gap-1.5 mb-3">
-                        {[0,1,2].map(i => (
+                        {[0, 1, 2].map(i => (
                           <span key={i} className="w-2 h-2 rounded-full inline-block"
                             style={{ background: 'var(--color-info)', opacity: 0.8,
                               animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
                         ))}
                       </div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                      <p className="text-sm font-semibold"
+                        style={{ color: 'var(--color-text-secondary)' }}>
                         Scanning URL…
                       </p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      <p className="text-xs"
+                        style={{ color: 'var(--color-text-muted)' }}>
                         Results will appear here when ready
                       </p>
                       <button onClick={dismissPrescan}
@@ -124,22 +127,13 @@ export default function Result2Page() {
               </div>
             )}
 
+            {/* ── Error state — full ErrorDisplay card ─────── */}
             {error ? (
-              <div className="rounded-2xl p-5"
-                style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                <p className="font-bold text-sm" style={{ color: '#f87171' }}>Scan failed</p>
-                <p className="text-sm mt-1" style={{ color: 'rgba(252,165,165,0.7)' }}>{error}</p>
-                <div className="flex gap-3 mt-3">
-                  <button onClick={retryScan}
-                    className="text-sm font-semibold px-4 py-2 rounded-lg"
-                    style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-                    ↻ Retry
-                  </button>
-                  <button onClick={() => navigate('/')} className="text-sm" style={{ color: 'var(--color-info)' }}>
-                    ← Go back
-                  </button>
-                </div>
-              </div>
+              <ErrorDisplay
+                error={error}
+                onRetry={retryScan}
+                onGoBack={() => navigate('/')}
+              />
             ) : !showPrescan ? (
               <VerdictBanner
                 status={status}
@@ -160,18 +154,20 @@ export default function Result2Page() {
               />
             )}
 
-            {result && !showPrescan && <VerdictFooter isPhishing={result.is_phishing} status={status} />}
+            {result && !showPrescan && (
+              <VerdictFooter isPhishing={result.is_phishing} status={status} />
+            )}
 
             <div className="sm:hidden mt-3">
               <ScanForm initialUrl={scanUrl} targetRoute="/result2" />
             </div>
           </div>
 
-          {/* ── Right sidebar ──────────────────── */}
+          {/* ── Right sidebar ────────────────────────────────── */}
           <div className="space-y-4">
             <div className="lg:sticky lg:top-[65px] space-y-4">
 
-              {parsedUrl && !showPrescan && (
+              {parsedUrl && !showPrescan && !error && (
                 <div className="rounded-2xl p-4"
                   style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                   <p className="text-xs font-bold uppercase tracking-widest mb-3"
@@ -179,7 +175,8 @@ export default function Result2Page() {
                     URL Anatomy
                   </p>
                   <FullURLStrip parsedUrl={parsedUrl} activeItem={null} />
-                  <p className="text-xs mt-2 italic" style={{ color: 'var(--color-text-muted)' }}>
+                  <p className="text-xs mt-2 italic"
+                    style={{ color: 'var(--color-text-muted)' }}>
                     Click any part to learn what it means
                   </p>
                 </div>
@@ -205,6 +202,34 @@ export default function Result2Page() {
                   </a>
                 </div>
               )}
+
+              {/* Error sidebar hint — shown instead of summary panel on error */}
+              {error && (
+                <div className="rounded-2xl p-4"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-3"
+                    style={{ color: 'var(--color-text-secondary)' }}>
+                    What you can do
+                  </p>
+                  <div className="space-y-2">
+                    {[
+                      { label: 'Try scanning again', action: retryScan,         show: error.type !== 'unauthorized' && error.type !== 'invalid_url' },
+                      { label: 'Scan a different URL', action: handleScanAnother, show: true },
+                      { label: 'Check server status',
+                        action: () => window.open('https://status.learnphish.me', '_blank'),
+                        show: error.type === 'server_error' || error.type === 'service_unavailable' || error.type === 'connection_error' },
+                    ].filter(a => a.show).map(({ label, action }) => (
+                      <button key={label} onClick={action}
+                        className="w-full text-left text-xs font-semibold px-3 py-2.5 rounded-lg transition-all"
+                        style={{ background: 'var(--color-elevated)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--color-info)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}>
+                        → {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -215,11 +240,11 @@ export default function Result2Page() {
 }
 
 function skeletonGroups() {
-  const sk = id => ({ id, text:'', tip:'', part:'full', severity:'pending', present:false, measured:'' })
+  const sk = id => ({ id, text: '', tip: '', part: 'full', severity: 'pending', present: false, measured: '' })
   return [
-    { id:'sk1', name:'Web Address & Technical Checks', items: Array.from({length:10},(_,i)=>sk(`sk1_${i}`)) },
-    { id:'sk2', name:'Brand Impersonation Check',      items: [sk('sk2_0')] },
-    { id:'sk3', name:'Generated / Random URL Check',    items: [sk('sk3_0')] },
-    { id:'sk4', name:'Machine Learning Analysis',      items: Array.from({length:3},(_,i)=>sk(`sk4_${i}`)) },
+    { id: 'sk1', name: 'Web Address & Technical Checks', items: Array.from({ length: 10 }, (_, i) => sk(`sk1_${i}`)) },
+    { id: 'sk2', name: 'Brand Impersonation Check',      items: [sk('sk2_0')] },
+    { id: 'sk3', name: 'Generated / Random URL Check',   items: [sk('sk3_0')] },
+    { id: 'sk4', name: 'Machine Learning Analysis',      items: Array.from({ length: 3 }, (_, i) => sk(`sk4_${i}`)) },
   ]
 }

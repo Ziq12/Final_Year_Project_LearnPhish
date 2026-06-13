@@ -66,10 +66,11 @@ from heuristic import run_heuristics, HeuristicResult
 from explainer import explain, FEATURE_RULES
 
 from fastapi import Request                          # Fix #1 — Request must be imported
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
+from error_handlers import register_error_handlers
 
 import os
 from dotenv import load_dotenv, find_dotenv
@@ -94,6 +95,8 @@ async def lifespan(app: FastAPI):
 
 # ──────────────────────────────────────────────────────────────
 # API Key Verification Middleware
+# 401 Unauthorized = "you haven't authenticated."
+# 403 Forbidden    = "you authenticated but lack permission."
 # ──────────────────────────────────────────────────────────────
 ALLOWED_KEYS = [
     os.getenv("FRONTEND_API_KEY"),
@@ -103,7 +106,13 @@ ALLOWED_KEYS = [
 
 async def verify_api_key(x_api_key: str = Header(None)):
     if not x_api_key or x_api_key not in ALLOWED_KEYS:
-        raise HTTPException(status_code=403, detail="Unauthorized")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "message":    "Invalid or missing API key. Check your configuration.",
+                "error_code": "unauthorized",
+            },
+        )
 
 app = FastAPI(
     title="LearnPhish",
@@ -119,7 +128,7 @@ app = FastAPI(
 # Rate limiter (slowapi)
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+register_error_handlers(app)
 
 # CORS — allow browser extension origins and localhost (for dev)
 app.add_middleware(
@@ -1001,7 +1010,15 @@ async def predict_url(data: URLRequest):
         if not skip_ml:
             ml_ok = await _run_ml(cr)
             if not ml_ok:
-                return {"url": url, "error": "Feature extraction failed"}
+                # HF Space timed out or is cold-starting — tell the client clearly
+                raise HTTPException(
+                    status_code=503,
+                    detail={
+                        "message":    "The ML analysis service is temporarily unavailable. "
+                                      "It may be waking from sleep — please retry in 30–60 s.",
+                        "error_code": "service_unavailable",
+                    },
+                )
 
         # Stage 4: Build unified response (synchronous)
         response = _build_response(cr)
@@ -1051,8 +1068,12 @@ async def predict_url(data: URLRequest):
 
         return JSONResponse(content=_sanitise(response))
 
+    except HTTPException:
+        raise # let the error_handlers module handle it
     except Exception as e:
-        return JSONResponse(content={"url": url, "error": str(e)})
+        # Unhandled exception — error_handlers.unhandled_exception_handler catches it
+        # Re-raise so it propagates to the registered handler (logs + 500 response).
+        raise
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1725,15 +1746,5 @@ def reject_dispute(fp_id: int, blacklist: bool = False):
     return result
 
 
-# ──────────────────────────────────────────────────────────────
-# Admin page redirect
-# ──────────────────────────────────────────────────────────────
-from fastapi.responses import RedirectResponse
 
-@app.get("/admin", include_in_schema=False)
-def admin_redirect():
-    return RedirectResponse(url="/home/admin.html")
-
-
-app.mount("/home", StaticFiles(directory="Admin", html=True), name="static")
 

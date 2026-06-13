@@ -1,16 +1,24 @@
 /**
  * HomePage — Brand page with mission, how-it-works, tech stack, then scan form.
  */
+import { useEffect }   from 'react'
 import { useNavigate } from 'react-router-dom'
 import useScanStore    from '../store/useScanStore'
 import { useQuizPrefetch } from '../hooks/useQuizPrefetch'
+import ErrorDisplay    from '../components/result/ErrorDisplay'
 
 export default function HomePage() {
   useQuizPrefetch()
 
   const error     = useScanStore(s => s.error)
+  const reset     = useScanStore(s => s.reset)
   const startScan = useScanStore(s => s.startScan)
   const navigate  = useNavigate()
+
+  // Clear any stale scan state when the user lands on the home page.
+  // This prevents a previous failed-scan error from appearing in the form
+  // if the user navigated back without explicitly resetting.
+  useEffect(() => { reset() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleScan(url) {
     navigate('/result2')
@@ -339,11 +347,10 @@ function ScanHero({ onScan, error }) {
           Analyse URL →
         </button>
       </form>
+
+      {/* Compact error display — handles the structured error object from useScanStore */}
       {error && (
-        <div className="mt-3 px-4 py-2.5 rounded-xl"
-          style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-danger-border)' }}>
-          <p className="text-sm" style={{ color: 'var(--color-danger)' }}><strong>Error:</strong> {error}</p>
-        </div>
+        <ErrorDisplay error={error} compact />
       )}
     </div>
   )

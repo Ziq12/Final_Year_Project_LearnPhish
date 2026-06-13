@@ -2,8 +2,8 @@
    PhishGuard Admin Dashboard — admin.js
    Fetches /api/admin/stats + /api/feedback, renders all zones.
 ───────────────────────────────────────────────────────────── */
-
-const API = '';   // same-origin — adjust if hosted separately
+const apiBase = import.meta.env.VITE_API_URL || '';
+const API = apiBase;   // same-origin — adjust if hosted separately
 
 // ── Session & Auth ────────────────────────────────────────────
 const SESSION_DURATION = 30 * 60 * 1000; // 30 Minutes
