@@ -81,14 +81,14 @@ const useScanStore = create((set, get) => ({
   prescanDismissed:   false,
   prefetchedQuestion: undefined, 
 
-  // ── Main scan action (IMPROVED WITH PROMISE.ALL) ────────────────
+  // ── Main scan action ────────────────────────────────────────
   startScan: async (url) => {
     // 1. Reset state and show loading skeleton for the quiz
     set({
       url,
-      status:           'scanning',
-      result:           null,
-      error:            null,
+      status: 'scanning',
+      result: null,
+      error: null,
       prescanDismissed: false,
       prefetchedQuestion: undefined, // Tells Result2Page to show the "Scanning..." loader
     })
@@ -98,24 +98,25 @@ const useScanStore = create((set, get) => ({
       
       // 2. Define Scan API call
       const scanPromise = fetch(`${apiBase}/api/predict`, {
-        method:  'POST',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key':    import.meta.env.VITE_FRONTEND_API_KEY,
+          'x-api-key': import.meta.env.VITE_FRONTEND_API_KEY,
         },
         body: JSON.stringify({ url }),
       })
 
-      // 3. Define Quiz API call (Fetches in parallel!)
-      // ⚠️ Note: Update '/api/quiz-question' to match your actual backend endpoint
-      const quizPromise = fetch(`${apiBase}/api/quiz-question?url=${encodeURIComponent(url)}`)
-        .then(res => res.ok ? res.json() : null)
-        .catch(() => null) // Fail gracefully so it doesn't block the scan if the quiz DB is down
+      // 3. Define Quiz API call using your centralized helper!
+      const excludeIds = JSON.parse(localStorage.getItem('answered_quiz_ids') || '[]')
+      const quizPromise = fetchQuestion("pre_scan", excludeIds)
 
       // 4. Execute both simultaneously
       const [scanRes, quizQuestion] = await Promise.all([scanPromise, quizPromise])
 
-      // 5. Store the quiz question immediately so the UI can render it
+      // 5. Store the quiz question immediately
+      // Note: If the "pre_scan" domain has no questions left, fetchQuestion 
+      // returns null. Result2Page's useEffect will see null and auto-dismiss 
+      // the skeleton so the user isn't stuck.
       set({ prefetchedQuestion: quizQuestion })
 
       // Always attempt to parse the body for structured error messages
@@ -131,7 +132,7 @@ const useScanStore = create((set, get) => ({
       // ── 200 but backend signalled failure (legacy / fallback) ─
       if (body?.error && typeof body.error === 'string') {
         set({
-          error:  { type: ERROR_TYPES.SERVER_ERROR, message: body.error, status: 200 },
+          error: { type: ERROR_TYPES.SERVER_ERROR, message: body.error, status: 200 },
           status: 'error',
         })
         return
@@ -143,7 +144,7 @@ const useScanStore = create((set, get) => ({
     } catch (err) {
       // fetch() itself threw: network unreachable, CORS pre-flight blocked, etc.
       set({
-        error:  parseHttpError(0, null, /* isNetwork= */ true),
+        error: parseHttpError(0, null, /* isNetwork= */ true),
         status: 'error',
       })
     }
@@ -163,11 +164,11 @@ const useScanStore = create((set, get) => ({
 
   // ── Reset ────────────────────────────────────────────────────
   reset: () => set({
-    url:                '',
-    result:             null,
-    status:             'idle',
-    error:              null,
-    prescanDismissed:   false,
+    url: '',
+    result: null,
+    status: 'idle',
+    error: null,
+    prescanDismissed: false,
     prefetchedQuestion: undefined,
   }),
 }))
