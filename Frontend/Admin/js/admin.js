@@ -457,29 +457,30 @@ async function loadCrudData(tab) {
             const threatDomains = stats.zone3.domains.map(d => d.domain);
             document.getElementById('quiz-domain-select').innerHTML = threatDomains.map(d => `<option value="${d}">${d}</option>`).join('');
 
-            const r = await adminFetch(`${API}/api/quiz/questions?limit=50`);
-            const data = await r.json();
-            document.getElementById('tbody-quiz').innerHTML = data.map(q => `
-                <tr>
-                    <td>#${q.id}</td>
-                    <td><span class="rule-badge">${q.domain}</span></td>
-                    <td style="max-width:400px;">${q.question_text}</td>
-                    <td><button class="btn btn-rose" onclick="deleteItem('quiz', ${q.id})">Delete</button></td>
-                </tr>
-            `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+                    const r = await adminFetch(`${API}/api/quiz/questions?limit=50`);
+        const data = await r.json();
+        document.getElementById('tbody-quiz').innerHTML = data.map(q => `
+             <tr>
+                 <td>#${q.id}</td>
+                 <td><span class="rule-badge">${q.domain}</span></td>
+                 <td style="max-width:400px;">${q.question_text}</td>
+                 <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="quiz" data-id="${q.id}">Delete</button></td>
+             </tr>
+        `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
         }
     } catch (e) {
         console.error("CRUD Load Error:", e);
     }
 }
 
-async function deleteItem(type, idOrDomain) {
+async function deleteItem(btn) {
     const type = btn.dataset.type;
     const idOrDomain = btn.dataset.id;
-    if(!confirm(`Are you sure you want to delete ${idOrDomain}?`)) return
+    if(!confirm(`Are you sure you want to delete ${idOrDomain}?`)) return;
+    
     let url = '';
-    if (type === 'whitelist') url = `${API}/api/whitelist/${idOrDomain}`;
-    if (type === 'blacklist') url = `${API}/api/blacklist/${idOrDomain}`;
+    if (type === 'whitelist') url = `${API}/api/whitelist/${encodeURIComponent(idOrDomain)}`;
+    if (type === 'blacklist') url = `${API}/api/blacklist/${encodeURIComponent(idOrDomain)}`;
     if (type === 'quiz') url = `${API}/api/quiz/questions/${idOrDomain}`;
     
     const r = await adminFetch(url, { method: 'DELETE' });
@@ -492,9 +493,10 @@ async function deleteItem(type, idOrDomain) {
     }
 }
 
-async function deleteBrand(name) {
+async function deleteBrand(btn) {
     const name = btn.dataset.name;
     if(!confirm(`Delete brand ${name} and its domains?`)) return;
+    
     const r = await adminFetch(`${API}/api/brands/${encodeURIComponent(name)}`, { method: 'DELETE' });
     if (r.ok) {
         showToast(`Deleted ${name}`, 'ok');
