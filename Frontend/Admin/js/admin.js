@@ -363,7 +363,8 @@ async function syncCache() {
     const r = await adminFetch(`${API}/api/cache/reload`, { method: 'POST' });
     if (!r.ok) throw new Error(await r.text());
     const d = await r.json();
-    showToast(`⟳ Cache synced — ${d.whitelist} whitelist · ${d.blacklist} blacklist entries`, 'ok');
+    // ✅ FIX: Use the actual keys returned by your Python backend
+    showToast(`⟳ Cache synced — ${d.brands} brands · ${d.official_domains} official domains loaded`, 'ok');
     setCacheStatus(true);
   } catch (e) {
     showToast(`❌ Cache sync failed: ${e.message}`, 'err');
