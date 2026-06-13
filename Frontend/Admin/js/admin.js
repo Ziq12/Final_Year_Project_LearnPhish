@@ -27,7 +27,7 @@ async function adminFetch(url, options = {}) {
         throw new Error('Session expired.');
     }
     const headers = options.headers || {};
-    headers['x-api-key'] = sessionStorage.getItem('admin_api_key');
+    headers['X-API-KEY'] = sessionStorage.getItem('admin_api_key');
     options.headers = headers;
     
     const res = await fetch(url, options);
@@ -321,7 +321,7 @@ async function approveDispute(id, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   try {
-    const r = await fetch(`${API}/api/feedback/${id}/approve`, { method: 'POST' });
+    const r = await adminFetch(`${API}/api/feedback/${id}/approve`, { method: 'POST' });
     if (!r.ok) throw new Error(await r.text());
     const d = await r.json();
     showToast(`✅ Approved — ${d.domain} whitelisted & cache reloaded`, 'ok');
@@ -343,7 +343,7 @@ async function rejectDispute(id, blacklist, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   try {
-    const r = await fetch(`${API}/api/feedback/${id}/reject?blacklist=${blacklist}`, { method: 'POST' });
+    const r = await adminFetchin(`${API}/api/feedback/${id}/reject?blacklist=${blacklist}`, { method: 'POST' });
     if (!r.ok) throw new Error(await r.text());
     const d = await r.json();
     const msg = blacklist ? `🔒 Rejected & blacklisted` : `❌ Rejected — dispute dismissed`;
@@ -360,7 +360,7 @@ async function rejectDispute(id, blacklist, btn) {
 
 async function syncCache() {
   try {
-    const r = await fetch(`${API}/api/cache/reload`, { method: 'POST' });
+    const r = await adminFetch(`${API}/api/cache/reload`, { method: 'POST' });
     if (!r.ok) throw new Error(await r.text());
     const d = await r.json();
     showToast(`⟳ Cache synced — ${d.whitelist} whitelist · ${d.blacklist} blacklist entries`, 'ok');
@@ -380,8 +380,8 @@ function setCacheStatus(ok) {
 async function loadDashboard() {
   try {
     const [statsRes, feedRes] = await Promise.all([
-      fetch(`${API}/api/admin/stats`),
-      fetch(`${API}/api/feedback?resolved=false&limit=50`),
+      adminFetch(`${API}/api/admin/stats`),
+      adminFetch(`${API}/api/feedback?resolved=false&limit=50`),
     ]);
 
     if (!statsRes.ok) throw new Error(`Stats API ${statsRes.status}`);
