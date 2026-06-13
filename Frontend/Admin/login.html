@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - PhishGuard</title>
+    <link rel="stylesheet" href="./css/admin.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+        .login-container {
+            background: var(--card); padding: 40px; border-radius: var(--radius);
+            border: 1px solid var(--border); width: 100%; max-width: 400px;
+            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .login-container h2 { font-family: var(--font-sans); color: var(--text); margin-bottom: 8px; font-size: 24px; }
+        .login-container p { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+        .login-container input {
+            width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); border-radius: var(--radius-sm); margin-bottom: 16px;
+            font-family: var(--font-mono); font-size: 14px;
+        }
+        .login-container input:focus { outline: none; border-color: var(--indigo); }
+        .login-container button { width: 100%; padding: 12px; }
+        .login-error {
+            display: none; color: var(--rose); font-size: 12px; margin-top: 12px;
+            background: rgba(244, 63, 94, 0.1); padding: 8px; border-radius: var(--radius-sm);
+        }
+        .back-link { display: block; margin-top: 24px; color: var(--text-muted); text-decoration: none; font-size: 12px; }
+        .back-link:hover { color: var(--indigo); }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>PhishGuard Admin</h2>
+        <p>Enter your secret API key to access the dashboard.</p>
+        
+        <input type="password" id="admin-api-key-input" placeholder="Secret API Key" autofocus>
+        <button id="login-btn" class="btn btn-indigo">Unlock Dashboard</button>
+        
+        <div id="login-error" class="login-error">Invalid API Key or Network Error</div>
+        
+        <a href="/" class="back-link">← Back to LearnPhish</a>
+    </div>
+
+    <script type="module" src="./js/login.js"></script>
+</body>
+</html>

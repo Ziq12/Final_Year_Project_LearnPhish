@@ -192,9 +192,9 @@ export default function HomePage() {
             {/* Check categories */}
             <div className="mt-8">
               <p className="text-xs font-bold uppercase tracking-widest text-center mb-5" style={{ color: 'var(--color-text-secondary)' }}>
-                6 Threat Domains Explained
+                4 Threat Domains Explained
               </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-3">
                 {[
                   { icon: '🕵️', name: 'Obfuscation & Cloaking',    desc: 'IP addresses, URL shorteners, punycode, open redirects', color: '#f87171' },
                   { icon: '🏷️', name: 'Identity & Brand Trust',    desc: 'Brand names in subdomains, TLD-swaps, typosquatting',    color: '#fb923c' },

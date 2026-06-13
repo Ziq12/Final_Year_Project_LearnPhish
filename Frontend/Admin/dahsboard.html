@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard — Admin Dashboard</title>
+    <link rel="stylesheet" href="./css/admin.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="header-left">
+            <a href="/" class="logo-link">[← LearnPhish]</a>
+            <div class="header-title">
+                <span class="header-badge">ADMIN</span>
+                <h1>PhishGuard Control</h1>
+            </div>
+        </div>
+        <div class="header-right">
+            <div id="cache-status" class="cache-status cache-warn">
+                <div class="cache-dot"></div>
+                <span class="cache-label">Cache Out-of-Sync</span>
+            </div>
+            <button class="btn btn-slate" onclick="syncCache()">⟳ Sync Cache</button>
+            <button class="btn btn-indigo" onclick="loadDashboard()">↻ Refresh</button>
+            <button class="btn btn-rose" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <main class="admin-main">
+        <p class="last-updated">Last updated: <span id="last-updated-time">—</span></p>
+
+        <!-- Zone 1 -->
+        <section class="zone">
+            <div class="zone-header"><h2>📡 System Health · 24-hour window</h2></div>
+            <div id="zone1-cards" class="stat-grid">
+                <div class="skeleton" style="height: 120px;"></div><div class="skeleton" style="height: 120px;"></div>
+                <div class="skeleton" style="height: 120px;"></div><div class="skeleton" style="height: 120px;"></div>
+            </div>
+            <div class="chart-card" style="margin-top: 16px;">
+                <div class="chart-title">7-Day Scan Trend</div>
+                <div class="sparkline-wrap">
+                    <svg id="sparkline-svg" viewBox="0 0 700 72" style="width: 100%; height: 72px;"></svg>
+                    <div id="sparkline-labels" class="sparkline-labels"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Zone 2 -->
+        <section class="zone">
+            <div class="zone-header"><h2>⚡ Pipeline Efficiency · ML Bypass = CPU saved</h2></div>
+            <div class="pipeline-grid">
+                <div class="gauge-card">
+                    <div class="chart-sub">ML Bypass Rate</div>
+                    <div class="gauge-wrap">
+                        <svg width="160" height="90" viewBox="0 0 160 90">
+                            <path d="M 10 80 A 70 70 0 0 1 150 80" fill="none" stroke="#334155" stroke-width="12" stroke-linecap="round"/>
+                            <path id="gauge-arc" d="M 10 80 A 70 70 0 0 1 150 80" fill="none" stroke="var(--indigo)" stroke-width="12" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="251"/>
+                        </svg>
+                        <div id="bypass-rate-num" class="gauge-number">—%</div>
+                    </div>
+                    <div id="bypass-hint" class="gauge-hint">Loading…</div>
+                </div>
+                <div class="chart-card flex-grow">
+                    <div class="chart-title">Skip Breakdown</div>
+                    <div id="skip-breakdown-bars" class="breakdown-bars"></div>
+                    <div class="breakdown-legend">
+                        <span><span class="legend-dot" style="background:var(--emerald)"></span>Whitelist</span>
+                        <span><span class="legend-dot" style="background:var(--rose)"></span>Blacklist</span>
+                        <span><span class="legend-dot" style="background:var(--amber)"></span>Heuristic</span>
+                        <span><span class="legend-dot" style="background:var(--indigo)"></span>ML Ran</span>
+                    </div>
+                </div>
+            </div>
+            <div id="pipeline-insight" class="insight-card" style="display:none;"></div>
+        </section>
+
+        <!-- Zone 3 -->
+        <section class="zone">
+            <div class="zone-header"><h2>🎓 Educational Telemetry · Quiz module</h2></div>
+            <div class="edu-grid">
+                <div class="chart-card flex-grow">
+                    <div class="chart-title">Domain Accuracy</div>
+                    <div id="domain-accuracy-bars" class="accuracy-bars"></div>
+                </div>
+                <div class="chart-card" style="min-width: 300px;">
+                    <div class="chart-title">Top Failed Questions</div>
+                    <ul id="top-failed-list" class="failed-list"></ul>
+                </div>
+            </div>
+            <div id="edu-insight" class="insight-card" style="display:none;"></div>
+        </section>
+
+        <!-- Zone 4 -->
+        <section class="zone">
+            <div class="zone-header">
+                <h2>🚩 Dispute Resolution Queue</h2>
+                <span class="dispute-badge" id="dispute-count-badge">0</span>
+            </div>
+            <div id="disputes-empty" class="empty-state">✅ No open disputes.</div>
+            <div id="disputes-table-wrap" class="table-wrap" style="display:none;">
+                <table class="disputes-table">
+                    <thead><tr><th>#</th><th>Submitted</th><th>Domain</th><th>Rule</th><th>Brand</th><th>Score</th><th>Note</th><th>Actions</th></tr></thead>
+                    <tbody id="disputes-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <script type="module" src="./js/admin.js"></script>
+</body>
+</html>
