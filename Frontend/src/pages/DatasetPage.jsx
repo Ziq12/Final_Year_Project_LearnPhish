@@ -4,6 +4,8 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import MainHeader from '../components/layout/MainHeader'  
+import Footer from '../components/layout/Footer'          
 
 const BATCH_SIZE = 200
 
@@ -189,42 +191,7 @@ export default function DatasetPage() {
     <div className="min-h-screen" style={{ background: 'var(--color-base)' }}>
 
       {/* Nav */}
-      <header className="sticky top-0 z-30 px-6 py-4"
-        style={{ background: 'rgba(8,15,26,0.96)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/')} className="flex items-center gap-3 cursor-pointer">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
-                style={{ background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.25)' }}>🛡️</div>
-              <span className="font-display font-bold text-lg" style={{ color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
-                LearnPhish
-              </span>
-            </button>
-            <span className="hidden sm:inline text-xs font-mono px-2 py-0.5 rounded"
-              style={{ background: 'rgba(56,189,248,0.1)', color: 'var(--color-info)', border: '1px solid rgba(56,189,248,0.2)' }}>
-              v5
-            </span>
-          </div>
-          <nav className="flex items-center gap-1">
-            {[
-              { label: 'Scanner', onClick: () => navigate('/') },
-              { label: 'Dataset', onClick: () => {} }, // Already on this page
-            ].map(({ label, onClick }) => (
-              <button key={label} onClick={onClick}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer"
-                style={{ 
-                  color: label === 'Dataset' ? 'var(--color-info)' : 'var(--color-text-secondary)', 
-                  background: label === 'Dataset' ? 'rgba(56,189,248,0.08)' : 'transparent',
-                  border: label === 'Dataset' ? '1px solid rgba(56,189,248,0.2)' : '1px solid transparent'
-                }}
-                onMouseEnter={e => { if(label !== 'Dataset') e.currentTarget.style.color = 'var(--color-info)' }}
-                onMouseLeave={e => { if(label !== 'Dataset') e.currentTarget.style.color = 'var(--color-text-secondary)' }}>
-                {label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </header>
+      <MainHeader />
 
       <main className="max-w-3xl mx-auto px-4 py-10 space-y-8">
 
@@ -373,18 +340,7 @@ export default function DatasetPage() {
         </div>
       </main>
 
-      <footer className="px-6 py-6" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="text-base">🛡️</span>
-            <span className="font-display font-bold text-sm" style={{ color: 'var(--color-text-secondary)' }}>LearnPhish</span>
-            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>v5 · Academic research project</span>
-          </div>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            Results are informational. Always exercise caution online.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

@@ -12,6 +12,8 @@ import FullURLStrip           from '../components/url/FullURLStrip'
 import PreScanQuiz            from '../components/quiz/PreScanQuiz'
 import FalsePositiveModal     from '../components/result/FalsePositiveModal'
 import ErrorDisplay           from '../components/result/ErrorDisplay'
+import ResultHeader           from '../components/layout/ResultHeader'
+
 
 export default function Result2Page() {
   const navigate = useNavigate()
@@ -47,42 +49,11 @@ export default function Result2Page() {
       )}
 
       {/* Sticky nav */}
-      <header className="sticky top-0 z-30 px-4 py-3"
-        style={{ background: 'rgba(8,15,26,0.96)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
-        <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
-          <button onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-sm font-semibold transition-colors shrink-0"
-            style={{ color: 'var(--color-text-secondary)' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--color-info)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}>
-            ← <span className="font-display font-bold" style={{ color: 'var(--color-text-primary)' }}>LearnPhish</span>
-          </button>
-
-          <div className="flex-1 max-w-sm hidden sm:block">
-            <ScanForm initialUrl={scanUrl} targetRoute="/result2" />
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Report button — shown once we have a successful scan result */}
-            {scanDone && result && (
-              <button onClick={() => setShowReport(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)', background: 'rgba(251,191,36,0.06)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(251,191,36,0.12)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(251,191,36,0.06)'}>
-                🚩 Report
-              </button>
-            )}
-            <button onClick={() => navigate('/dataset')}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--color-info)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}>
-              Dataset
-            </button>
-          </div>
-        </div>
-      </header>
+      <ResultHeader 
+        scanUrl={scanUrl} 
+        showReportButton={scanDone && result} 
+        onReport={() => setShowReport(true)} 
+      />
 
       <main className="max-w-[1100px] mx-auto px-4 py-6">
         <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 space-y-4 lg:space-y-0">

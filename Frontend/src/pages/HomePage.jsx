@@ -4,7 +4,9 @@
 import { useEffect }   from 'react'
 import { useNavigate } from 'react-router-dom'
 import useScanStore    from '../store/useScanStore'
-import ErrorDisplay    from '../components/result/ErrorDisplay'
+import ErrorDisplay from '../components/result/ErrorDisplay'
+import MainHeader from '../components/layout/MainHeader' 
+import Footer from '../components/layout/Footer'          
 
 export default function HomePage() {
   
@@ -36,37 +38,7 @@ export default function HomePage() {
       </div>
 
       {/* Nav */}
-      <header className="sticky top-0 z-30 px-6 py-4"
-        style={{ background: 'rgba(8,15,26,0.96)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
-              style={{ background: 'rgba(56,189,248,0.12)', border: '1px solid rgba(56,189,248,0.25)' }}>🛡️</div>
-            <span className="font-display font-bold text-lg" style={{ color: 'var(--color-text-primary)', letterSpacing: '-0.02em' }}>
-              LearnPhish
-            </span>
-            <span className="hidden sm:inline text-xs font-mono px-2 py-0.5 rounded"
-              style={{ background: 'rgba(56,189,248,0.1)', color: 'var(--color-info)', border: '1px solid rgba(56,189,248,0.2)' }}>
-              v5
-            </span>
-          </div>
-          <nav className="flex items-center gap-1">
-            {[
-              { label: 'How it works', href: '#how' },
-              { label: 'Technology',   href: '#tech' },
-              { label: 'Dataset',      onClick: () => navigate('/dataset') },
-            ].map(({ label, href, onClick }) => (
-              <a key={label} href={href} onClick={onClick}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer"
-                style={{ color: 'var(--color-text-secondary)' }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--color-info)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}>
-                {label}
-              </a>
-            ))}
-          </nav>
-        </div>
-      </header>
+      <MainHeader />
 
       <main className="flex-1 relative">
 
@@ -102,7 +74,7 @@ export default function HomePage() {
           <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
             {[
               { stat: '20+',    label: 'Security checks per URL' },
-              { stat: '6',      label: 'Threat domain categories' },
+              { stat: '4',      label: 'Threat domain categories' },
               { stat: '56',     label: 'ML features extracted' },
               { stat: '100%',   label: 'Lexical — works offline' },
             ].map(({ stat, label }) => (
@@ -296,18 +268,7 @@ export default function HomePage() {
 
       </main>
 
-      <footer className="px-6 py-6" style={{ borderTop: '1px solid var(--color-border)' }}>
-        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="text-base">🛡️</span>
-            <span className="font-display font-bold text-sm" style={{ color: 'var(--color-text-secondary)' }}>LearnPhish</span>
-            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>v5 · Academic research project</span>
-          </div>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            Results are informational. Always exercise caution online.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

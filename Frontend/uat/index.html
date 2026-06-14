@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnPhish · UAT & Usability Evaluation</title>
+    <!-- Google Font for modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4361ee;
+            --primary-light: #7b8cf6;
+            --primary-dark: #2d3bb0;
+            --success: #10b981;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --border-light: #f1f5f9;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+            --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.05);
+            --radius: 20px;
+            --radius-sm: 12px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 50%, #fef3e2 100%);
+            color: var(--text);
+            line-height: 1.5;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Floating background shapes */
+        .bg-shape {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+        }
+        .bg-shape-1 {
+            width: 600px;
+            height: 600px;
+            background: #4361ee;
+            top: -200px;
+            right: -150px;
+        }
+        .bg-shape-2 {
+            width: 500px;
+            height: 500px;
+            background: #10b981;
+            bottom: -150px;
+            left: -100px;
+        }
+
+        .header {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+        .header .logo-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .header .shield-icon {
+            font-size: 2.2rem;
+            filter: drop-shadow(0 2px 4px rgba(67,97,238,0.3));
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #4361ee, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .progress-wrapper {
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            position: sticky;
+            top: 82px;
+            z-index: 99;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .progress-steps {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            white-space: nowrap;
+            transition: all var(--transition);
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+        .progress-step .step-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            background: #e2e8f0;
+            color: #94a3b8;
+            transition: all var(--transition);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .progress-step.active {
+            color: var(--primary);
+            background: rgba(67,97,238,0.08);
+        }
+        .progress-step.active .step-icon {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 8px rgba(67,97,238,0.25);
+            transform: scale(1.1);
+        }
+        .progress-step.done {
+            color: var(--success);
+        }
+        .progress-step.done .step-icon {
+            background: var(--success);
+            color: white;
+        }
+        .progress-arrow {
+            color: #cbd5e1;
+            font-size: 0.6rem;
+            font-weight: 500;
+        }
+
+        .main-container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 28px 16px 60px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.6);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 32px 28px;
+            margin-bottom: 20px;
+            transition: transform var(--transition), box-shadow var(--transition);
+            animation: cardAppear 0.5s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 35px -8px rgba(0,0,0,0.1);
+        }
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card .card-subtitle {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-weight: 400;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            color: #1e293b;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-family: inherit;
+            background: #fff;
+            transition: all var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(67,97,238,0.15);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 26px;
+            border: none;
+            border-radius: 40px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            border-radius: 40px;
+        }
+        .btn:hover::after { opacity: 1; }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 8px 16px -6px rgba(67,97,238,0.4);
+        }
+        .btn-primary:hover { box-shadow: 0 12px 22px -8px rgba(67,97,238,0.5); transform: translateY(-1px); }
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 8px 16px -6px rgba(16,185,129,0.4);
+        }
+        .btn-outline {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-outline:hover { background: #f0f4ff; }
+        .btn-lg {
+            padding: 14px 32px;
+            font-size: 1rem;
+            border-radius: 48px;
+        }
+
+        .question-block {
+            background: #f9fafb;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            padding: 20px 18px;
+            margin-bottom: 16px;
+            transition: all var(--transition);
+        }
+        .question-block:hover { border-color: #d9e2ef; background: #fff; }
+        .q-num {
+            font-weight: 700;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+        .q-url {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            background: #fff;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #e9eef3;
+            margin-bottom: 14px;
+            color: #0f172a;
+            font-weight: 500;
+        }
+        .radio-group {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            font-weight: 500;
+            transition: all var(--transition);
+            font-size: 0.9rem;
+            user-select: none;
+        }
+        .radio-option:hover { border-color: #94a3b8; }
+        .radio-option input[type="radio"] { accent-color: var(--primary); width: 16px; height: 16px; }
+        .radio-option:has(input:checked) {
+            border-color: var(--primary);
+            background: #eef2ff;
+            box-shadow: 0 0 0 3px rgba(67,97,238,0.1);
+            font-weight: 600;
+        }
+        .radio-option.safe-option:has(input:checked) {
+            border-color: var(--success);
+            background: #ecfdf5;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+        }
+        .radio-option.phish-option:has(input:checked) {
+            border-color: var(--danger);
+            background: #fef2f2;
+            box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+        }
+
+        .result-item {
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-left: 6px solid;
+            background: #fff;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition);
+        }
+        .result-item:hover { transform: translateX(4px); }
+        .result-item.correct { border-left-color: var(--success); background: #f0fdf6; }
+        .result-item.incorrect { border-left-color: var(--danger); background: #fef5f5; }
+        .result-badge {
+            display: inline-block;
+            font-weight: 700;
+            font-size: 0.7rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+        }
+        .correct .result-badge { background: #d1fae5; color: #065f46; }
+        .incorrect .result-badge { background: #fee2e2; color: #991b1b; }
+
+        .score-summary {
+            text-align: center;
+            padding: 24px;
+            background: linear-gradient(135deg, #f9fafb, #f0f4ff);
+            border-radius: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #eef2ff;
+        }
+        .big-score {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #4361ee, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .sus-table-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: white;
+        }
+        table.sus-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 600px;
+        }
+        .sus-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 12px 8px;
+            text-align: center;
+        }
+        .sus-table td {
+            padding: 10px 8px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .sus-table .q-col { text-align: left; font-weight: 500; }
+
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mt-20 { margin-top: 20px; }
+        .flex-center { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+        .confetti {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        @media (max-width: 600px) {
+            .card { padding: 20px 16px; }
+            .big-score { font-size: 2.5rem; }
+            .radio-option { padding: 8px 14px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shape bg-shape-1"></div>
+    <div class="bg-shape bg-shape-2"></div>
+
+    <div class="header">
+        <div class="logo-area">
+            <span class="shield-icon">🛡️</span>
+            <div>
+                <h1>LearnPhish</h1>
+                <div class="subtitle">UAT & Usability Evaluation</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="progress-wrapper">
+        <div class="progress-steps" id="progressSteps">
+            <span class="progress-step active" data-step="0"><span class="step-icon">👤</span> Matric</span>
+            <span class="progress-arrow">→</span>
+            <span class="progress-step" data-step="1"><span class="step-icon">📝</span> Pre-Test</span>
+            <span class="progress-arrow">→</span>
+            <span class="progress-step" data-step="2"><span class="step-icon">💻</span> Website</span>
+            <span class="progress-arrow">→</span>
+            <span class="progress-step" data-step="3"><span class="step-icon">📊</span> Post-Test</span>
+            <span class="progress-arrow">→</span>
+            <span class="progress-step" data-step="4"><span class="step-icon">📋</span> SUS</span>
+            <span class="progress-arrow">→</span>
+            <span class="progress-step" data-step="5"><span class="step-icon">📥</span> Finish</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Matric Screen -->
+        <div class="card" id="screenMatric">
+            <h2>👋 Welcome, Tester!</h2>
+            <p class="card-subtitle">Please enter your Subject ID to begin the evaluation.</p>
+            <label>Subject ID / Matric Number</label>
+            <input type="text" id="matricInput" placeholder="e.g., A21CS0001" autocomplete="off">
+            <div class="mt-20 text-center">
+                <button class="btn btn-primary btn-lg" onclick="submitMatric()">Start Evaluation 🚀</button>
+            </div>
+        </div>
+
+        <!-- Pre-Test -->
+        <div class="card hidden" id="screenPreTest">
+            <h2>📝 Pre-Test: Baseline</h2>
+            <p class="card-subtitle">Classify each URL as <strong>Safe</strong> or <strong>Phishing</strong>.</p>
+            <div id="preTestQuestions"></div>
+            <div class="mt-20 text-center">
+                <button class="btn btn-primary btn-lg" onclick="submitPreTest()">Submit Answers</button>
+            </div>
+        </div>
+
+        <!-- Pre-Test Results -->
+        <div class="card hidden" id="screenPreTestResults">
+            <h2>📊 Pre-Test Results</h2>
+            <div id="preTestResultsContent"></div>
+            <div class="mt-20 text-center">
+                <button class="btn btn-primary btn-lg" onclick="goToWebsiteTest()">Continue to Website Test 💻</button>
+            </div>
+        </div>
+
+        <!-- Website Test Simulation -->
+        <div class="card hidden" id="screenWebsiteTest">
+            <h2>💻 Website Interaction Test</h2>
+            <p class="card-subtitle">Copy each URL and test the LearnPhish platform.</p>
+            <div style="background:#f0f4ff; border-radius:16px; padding:16px; margin:16px 0;">
+                <p style="font-weight:600;">🔗 Test URLs:</p>
+                <div class="q-url">https://netflix-billing.netfl1x.com.ml</div>
+                <div class="q-url">https://consumer.touchngo.com.my/login</div>
+            </div>
+            <div class="text-center mt-20">
+                <button class="btn btn-success btn-lg" onclick="goToPostTest()">✅ Done – Continue to Post-Test</button>
+            </div>
+        </div>
+
+        <!-- Post-Test -->
+        <div class="card hidden" id="screenPostTest">
+            <h2>📝 Post-Test: Learning Evaluation</h2>
+            <p class="card-subtitle">Now classify these new URLs after using LearnPhish.</p>
+            <div id="postTestQuestions"></div>
+            <div class="mt-20 text-center">
+                <button class="btn btn-primary btn-lg" onclick="submitPostTest()">Submit Answers</button>
+            </div>
+        </div>
+
+        <!-- Post-Test Results -->
+        <div class="card hidden" id="screenPostTestResults">
+            <h2>📊 Post-Test Results</h2>
+            <div id="postTestResultsContent"></div>
+            <div class="flex-center mt-20">
+                <button class="btn btn-outline btn-lg" onclick="downloadCSV(false)">📥 Download CSV (without SUS)</button>
+                <button class="btn btn-primary btn-lg" onclick="goToSUS()">Continue to SUS 📋</button>
+            </div>
+        </div>
+
+        <!-- SUS -->
+        <div class="card hidden" id="screenSUS">
+            <h2>📋 System Usability Scale</h2>
+            <p class="card-subtitle">Rate your experience (1 = Strongly Disagree, 5 = Strongly Agree).</p>
+            <div class="sus-table-wrapper">
+                <table class="sus-table">
+                    <thead><tr><th class="q-col">Statement</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>
+                    <tbody id="susTableBody"></tbody>
+                </table>
+            </div>
+            <div class="text-center mt-20">
+                <button class="btn btn-primary btn-lg" onclick="submitSUS()">Complete Evaluation 🎉</button>
+            </div>
+        </div>
+
+        <!-- Final -->
+        <div class="card hidden" id="screenFinal">
+            <h2>🎉 Evaluation Complete!</h2>
+            <div id="finalResultsContent"></div>
+            <div class="flex-center mt-20">
+                <button class="btn btn-success btn-lg" onclick="downloadCSV(true); launchConfetti();">📥 Download Full CSV</button>
+                <button class="btn btn-outline btn-lg" onclick="resetAll()">🔄 New Test</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas class="confetti" id="confettiCanvas" style="display:none;"></canvas>
+
+    <script>
+        (function() {
+            // State
+            const state = {
+                matricNo: '',
+                preTestAnswers: [],
+                preTestScore: 0,
+                postTestAnswers: [],
+                postTestScore: 0,
+                susRawScores: [],
+                susFinalScore: 0,
+                currentStep: 0,
+            };
+
+            const preTestQuestions = [
+                { url: 'http://www.maybank2uu.com.my', correct: 'phishing', explanation: '🔴 Typosquatting: "2uu" mimics the legitimate "2u".' },
+                { url: 'https://shopee.com.my/Groceries-Pets-cat.11000003', correct: 'safe', explanation: '🟢 Legitimate Shopee Malaysia URL.' },
+                { url: 'https://shrtweb.site/bantuanmy13', correct: 'phishing', explanation: '🔴 Suspicious .site TLD and "bantuan" bait.' },
+                { url: 'https://www.аpple.com', correct: 'phishing', explanation: '🔴 Homograph attack: Cyrillic "а" (U+0430) looks like ASCII "a".' },
+                { url: 'https://sara.gov.my/', correct: 'safe', explanation: '🟢 Official .gov.my government domain.' }
+            ];
+
+            const postTestQuestions = [
+                { url: 'https://www.cimbclicks.com.my', correct: 'safe', explanation: '🟢 Legitimate CIMB Clicks portal.' },
+                { url: 'http://bantuan-str-2026.xyz', correct: 'phishing', explanation: '🔴 .xyz TLD with "bantuan" keyword scam.' },
+                { url: 'https://www.pos.com.my-tracking-parcel.info', correct: 'phishing', explanation: '🔴 Hyphenation tricks and .info domain.' },
+                { url: 'https://pleasant-mermaid-308598.framer.app', correct: 'phishing', explanation: '🔴 Free hosting abuse via Framer subdomain.' },
+                { url: 'https://www.roblox.com.ml/users/132558458859/profile', correct: 'phishing', explanation: '🔴 .ml (Mali) TLD impersonating Roblox.' }
+            ];
+
+            const susQuestions = [
+                'I think that I would like to use this system frequently.',
+                'I found the system unnecessarily complex.',
+                'I thought the system was easy to use.',
+                'I need the support of a technical person to use this system.',
+                'I found the various functions well integrated.',
+                'I thought there was too much inconsistency.',
+                'Most people would learn to use this system quickly.',
+                'I found the system very cumbersome to use.',
+                'I felt very confident using the system.',
+                'I needed to learn a lot before getting going.'
+            ];
+
+            const screens = ['screenMatric','screenPreTest','screenPreTestResults','screenWebsiteTest','screenPostTest','screenPostTestResults','screenSUS','screenFinal'];
+
+            function showScreen(id) {
+                screens.forEach(s => document.getElementById(s)?.classList.add('hidden'));
+                document.getElementById(id).classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function updateProgress(stepIndex) {
+                state.currentStep = stepIndex;
+                document.querySelectorAll('.progress-step').forEach((el, idx) => {
+                    el.classList.remove('active','done');
+                    if (idx < stepIndex) el.classList.add('done');
+                    if (idx === stepIndex) el.classList.add('active');
+                });
+            }
+
+            window.submitMatric = function() {
+                const val = document.getElementById('matricInput').value.trim();
+                if (!val) return alert('Please enter your Matric No.');
+                state.matricNo = val;
+                updateProgress(1);
+                renderPreTest();
+                showScreen('screenPreTest');
+            };
+
+            function renderPreTest() {
+                let html = '';
+                preTestQuestions.forEach((q, i) => {
+                    html += `<div class="question-block">
+                        <div class="q-num">Question ${i+1}/5</div>
+                        <div class="q-url">${escapeHTML(q.url)}</div>
+                        <div class="radio-group">
+                            <label class="radio-option safe-option"><input type="radio" name="preQ${i}" value="safe"> 🟢 Safe</label>
+                            <label class="radio-option phish-option"><input type="radio" name="preQ${i}" value="phishing"> 🔴 Phishing</label>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('preTestQuestions').innerHTML = html;
+            }
+
+            window.submitPreTest = function() {
+                const answers = [];
+                let all = true;
+                preTestQuestions.forEach((q,i) => {
+                    const sel = document.querySelector(`input[name="preQ${i}"]:checked`);
+                    if (!sel) { all = false; return; }
+                    const user = sel.value;
+                    answers.push({ url: q.url, userAnswer: user, correctAnswer: q.correct, isCorrect: user === q.correct, explanation: q.explanation });
+                });
+                if (!all) return alert('Please answer all questions.');
+                state.preTestAnswers = answers;
+                state.preTestScore = answers.filter(a => a.isCorrect).length;
+                updateProgress(2);
+                renderPreTestResults();
+                showScreen('screenPreTestResults');
+            };
+
+            function renderPreTestResults() {
+                let html = `<div class="score-summary"><div class="big-score">${state.preTestScore}<span style="font-size:1.2rem;">/5</span></div></div>`;
+                state.preTestAnswers.forEach(a => {
+                    html += `<div class="result-item ${a.isCorrect?'correct':'incorrect'}">
+                        <span class="result-badge">${a.isCorrect?'✅ Correct':'❌ Incorrect'}</span>
+                        <div class="q-url" style="margin:6px 0;">${escapeHTML(a.url)}</div>
+                        <div style="font-size:0.85rem;">${a.explanation}</div>
+                    </div>`;
+                });
+                document.getElementById('preTestResultsContent').innerHTML = html;
+            }
+
+            window.goToWebsiteTest = () => { updateProgress(2); showScreen('screenWebsiteTest'); };
+            window.goToPostTest = () => { updateProgress(3); renderPostTest(); showScreen('screenPostTest'); };
+
+            function renderPostTest() {
+                let html = '';
+                postTestQuestions.forEach((q,i) => {
+                    html += `<div class="question-block">
+                        <div class="q-num">Question ${i+1}/5</div>
+                        <div class="q-url">${escapeHTML(q.url)}</div>
+                        <div class="radio-group">
+                            <label class="radio-option safe-option"><input type="radio" name="postQ${i}" value="safe"> 🟢 Safe</label>
+                            <label class="radio-option phish-option"><input type="radio" name="postQ${i}" value="phishing"> 🔴 Phishing</label>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById('postTestQuestions').innerHTML = html;
+            }
+
+            window.submitPostTest = function() {
+                const answers = [];
+                let all = true;
+                postTestQuestions.forEach((q,i) => {
+                    const sel = document.querySelector(`input[name="postQ${i}"]:checked`);
+                    if (!sel) { all = false; return; }
+                    const user = sel.value;
+                    answers.push({ url: q.url, userAnswer: user, correctAnswer: q.correct, isCorrect: user === q.correct, explanation: q.explanation });
+                });
+                if (!all) return alert('Please answer all questions.');
+                state.postTestAnswers = answers;
+                state.postTestScore = answers.filter(a => a.isCorrect).length;
+                updateProgress(4);
+                renderPostTestResults();
+                showScreen('screenPostTestResults');
+            };
+
+            function renderPostTestResults() {
+                const improvement = calcImprovement(state.preTestScore, state.postTestScore);
+                let html = `<div class="score-summary">
+                    <div class="big-score">${state.postTestScore}<span style="font-size:1.2rem;">/5</span></div>
+                    <p style="margin-top:8px;">Pre: ${state.preTestScore}/5 · Improvement: <strong style="color:${improvement>=0?'var(--success)':'var(--danger)'}">${improvement>=0?'+':''}${improvement.toFixed(1)}%</strong></p>
+                </div>`;
+                state.postTestAnswers.forEach(a => {
+                    html += `<div class="result-item ${a.isCorrect?'correct':'incorrect'}">
+                        <span class="result-badge">${a.isCorrect?'✅ Correct':'❌ Incorrect'}</span>
+                        <div class="q-url" style="margin:6px 0;">${escapeHTML(a.url)}</div>
+                        <div style="font-size:0.85rem;">${a.explanation}</div>
+                    </div>`;
+                });
+                document.getElementById('postTestResultsContent').innerHTML = html;
+            }
+
+            window.goToSUS = () => { updateProgress(4); renderSUS(); showScreen('screenSUS'); };
+
+            function renderSUS() {
+                let html = '';
+                susQuestions.forEach((q,i) => {
+                    html += `<tr>
+                        <td class="q-col">${i+1}. ${escapeHTML(q)}</td>
+                        <td><input type="radio" name="susQ${i}" value="1"></td>
+                        <td><input type="radio" name="susQ${i}" value="2"></td>
+                        <td><input type="radio" name="susQ${i}" value="3"></td>
+                        <td><input type="radio" name="susQ${i}" value="4"></td>
+                        <td><input type="radio" name="susQ${i}" value="5"></td>
+                    </tr>`;
+                });
+                document.getElementById('susTableBody').innerHTML = html;
+            }
+
+            window.submitSUS = function() {
+                const scores = [];
+                let all = true;
+                for (let i=0; i<10; i++) {
+                    const sel = document.querySelector(`input[name="susQ${i}"]:checked`);
+                    if (!sel) { all = false; break; }
+                    scores.push(parseInt(sel.value));
+                }
+                if (!all) return alert('Please answer all SUS questions.');
+                state.susRawScores = scores;
+                let total = 0;
+                scores.forEach((s, i) => {
+                    total += (i+1) % 2 === 1 ? s-1 : 5-s;
+                });
+                state.susFinalScore = total * 2.5;
+                updateProgress(5);
+                renderFinal();
+                showScreen('screenFinal');
+            };
+
+            function renderFinal() {
+                const improvement = calcImprovement(state.preTestScore, state.postTestScore);
+                const html = `<div class="score-summary">
+                    <table style="width:100%; border-collapse:collapse; text-align:center;">
+                        <tr>
+                            <td><div style="font-size:2rem; font-weight:800;">${state.preTestScore}/5</div><small>Pre-Test</small></td>
+                            <td><div style="font-size:2rem; font-weight:800; color:var(--success);">${state.postTestScore}/5</div><small>Post-Test</small></td>
+                            <td><div style="font-size:2rem; font-weight:800;">${improvement.toFixed(1)}%</div><small>Improvement</small></td>
+                            <td><div style="font-size:2rem; font-weight:800; color:#7c3aed;">${state.susFinalScore.toFixed(1)}</div><small>SUS /100</small></td>
+                        </tr>
+                    </table>
+                </div>
+                <p style="text-align:center;">Subject: <strong>${escapeHTML(state.matricNo)}</strong></p>`;
+                document.getElementById('finalResultsContent').innerHTML = html;
+            }
+
+            function calcImprovement(pre, post) {
+                if (pre === 0 && post === 0) return 0;
+                if (pre === 0) return post * 20;
+                return ((post - pre) / pre) * 100;
+            }
+
+            window.downloadCSV = function(includeSUS) {
+                const improvement = calcImprovement(state.preTestScore, state.postTestScore);
+                const headers = ['Subject ID','Pre-Test (Out of 5)','Post-Test (Out of 5)','Improvement (%)'];
+                const values = [state.matricNo, state.preTestScore, state.postTestScore, improvement.toFixed(1)];
+                state.preTestAnswers.forEach((a,i) => {
+                    headers.push(`Pre-Q${i+1}-URL`,`Pre-Q${i+1}-Answer`,`Pre-Q${i+1}-Result`);
+                    values.push(a.url, a.userAnswer, a.isCorrect?'Correct':'Incorrect');
+                });
+                state.postTestAnswers.forEach((a,i) => {
+                    headers.push(`Post-Q${i+1}-URL`,`Post-Q${i+1}-Answer`,`Post-Q${i+1}-Result`);
+                    values.push(a.url, a.userAnswer, a.isCorrect?'Correct':'Incorrect');
+                });
+                if (includeSUS && state.susRawScores.length === 10) {
+                    state.susRawScores.forEach((s,i) => { headers.push(`SUS-Q${i+1}`); values.push(s); });
+                    headers.push('SUS-Score'); values.push(state.susFinalScore.toFixed(1));
+                }
+                const csvContent = '\uFEFF' + headers.join(',') + '\n' + values.join(',');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `LearnPhish_UAT_${state.matricNo.replace(/\W/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+                a.click();
+            };
+
+            window.launchConfetti = function() {
+                const canvas = document.getElementById('confettiCanvas');
+                canvas.style.display = 'block';
+                const ctx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                const particles = Array.from({length: 80}, () => ({
+                    x: Math.random()*canvas.width,
+                    y: Math.random()*canvas.height - canvas.height,
+                    color: `hsl(${Math.random()*360}, 80%, 60%)`,
+                    size: Math.random()*6+3,
+                    speedY: Math.random()*3+2,
+                    speedX: Math.random()*2-1,
+                }));
+                function draw() {
+                    ctx.clearRect(0,0,canvas.width,canvas.height);
+                    particles.forEach(p => {
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(p.x, p.y, p.size, p.size);
+                        p.y += p.speedY;
+                        p.x += p.speedX;
+                    });
+                    if (particles.some(p => p.y < canvas.height+20)) requestAnimationFrame(draw);
+                    else canvas.style.display = 'none';
+                }
+                draw();
+            };
+
+            function escapeHTML(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            window.resetAll = function() {
+                Object.assign(state, {
+                    matricNo: '', preTestAnswers: [], preTestScore: 0,
+                    postTestAnswers: [], postTestScore: 0, susRawScores: [], susFinalScore: 0
+                });
+                document.getElementById('matricInput').value = '';
+                document.getElementById('preTestQuestions').innerHTML = '';
+                document.getElementById('preTestResultsContent').innerHTML = '';
+                document.getElementById('postTestQuestions').innerHTML = '';
+                document.getElementById('postTestResultsContent').innerHTML = '';
+                document.getElementById('susTableBody').innerHTML = '';
+                document.getElementById('finalResultsContent').innerHTML = '';
+                updateProgress(0);
+                showScreen('screenMatric');
+            };
+
+            // Init
+            updateProgress(0);
+            showScreen('screenMatric');
+            document.getElementById('matricInput').addEventListener('keypress', e => { if (e.key==='Enter') submitMatric(); });
+        })();
+    </script>
+</body>
+</html>
