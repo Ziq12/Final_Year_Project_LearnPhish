@@ -289,11 +289,11 @@ def warm_up_redis_cache(limit: int = 10000) -> None:
 # ──────────────────────────────────────────────────────────────
 @dataclass
 class MemoryCache:
-    brand_names:            set[str]                    = field(default_factory=set)
-    brands_by_len:          defaultdict[int, list[str]] = field(default_factory=lambda: defaultdict(list))
-    brand_official_domains: set[str]                    = field(default_factory=set)
-    loaded_at:              float                       = 0.0
-
+    brand_names:              set[str]                    = field(default_factory=set)
+    brands_by_len:            defaultdict[int, list[str]] = field(default_factory=lambda: defaultdict(list))
+    brand_official_domains:   set[str]                    = field(default_factory=set)
+    brand_to_primary_domain:  dict[str, str]              = field(default_factory=dict)
+    loaded_at:                float                       = 0.0
 
 _cache = MemoryCache()
 
@@ -321,17 +321,25 @@ def load_cache() -> None:
 
             # ── Official brand domains ────────────────────────
             cur.execute("""
-                SELECT bd.domain
+                SELECT b.name, bd.domain, bd.is_primary
                 FROM brand_domains bd
                 JOIN brands b ON b.id = bd.brand_id
                 WHERE b.is_active = TRUE
             """)
-            official: set[str] = {row["domain"] for row in cur.fetchall()}
+            official: set[str] = set()
+            brand_to_primary: dict[str, str] = {}
+            for row in cur.fetchall():
+                official.add(row["domain"])
+                # Only store if is_primary — last write wins if duplicates exist,
+                # which is fine because the schema enforces one primary per brand.
+                if row["is_primary"]:
+                    brand_to_primary[row["name"].lower()] = row["domain"]
 
     _cache = MemoryCache(
         brand_names=brand_names,
         brands_by_len=brands_by_len,
         brand_official_domains=official,
+        brand_to_primary_domain=brand_to_primary,
         loaded_at=time.perf_counter(),
     )
 
@@ -346,7 +354,17 @@ def get_cache() -> MemoryCache:
     """Return the current in-memory brand cache."""
     return _cache
 
+def get_brand_primary_domain(brand_name: str) -> Optional[str]:
+    """
+    Return the primary official domain for a brand slug, or None if
+    the brand has no primary domain entry in the database.
 
+    Examples:
+        get_brand_primary_domain("tng")     → "touchngo.com.my"
+        get_brand_primary_domain("paypal")  → "paypal.com"
+        get_brand_primary_domain("unknown") → None
+    """
+    return _cache.brand_to_primary_domain.get(brand_name.lower())
 # ──────────────────────────────────────────────────────────────
 # Hot-path lookups  (called per request, fully in-memory)
 # ──────────────────────────────────────────────────────────────

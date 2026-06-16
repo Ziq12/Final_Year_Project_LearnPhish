@@ -160,7 +160,7 @@ export function buildChecklist(data) {
       severity:       brandTriggered ? (bc.verdict === 'block' ? 'danger' : 'suspicious') : 'safe',
       present:        brandTriggered,
       measured:       bc?.matched_brand ? `matched: ${bc.matched_brand}` : '',
-      officialDomain: brandTriggered && bc.matched_brand ? `${bc.matched_brand}.com` : null,
+      officialDomain: brandTriggered && bc.real_domain ? bc.real_domain : null,
       fakeUrl:        brandTriggered ? data?.url : null,
     }],
   })

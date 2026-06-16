@@ -147,6 +147,7 @@ class HeuristicResult:
                 "message":          brand.message,
                 "had_unicode":      brand.had_unicode,
                 "normalized_sld":   brand.normalized_sld,
+                "real_domain":      brand.real_domain,
             } if brand else None,
 
             # Full DGA result including all 8 features (triggered and not)

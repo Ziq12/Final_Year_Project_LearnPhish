@@ -86,6 +86,8 @@ class BrandCheckResult:
     message: str = ""
     had_unicode: bool = False
     normalized_sld: str = ""
+    real_domain: Optional[str] = None      # primary official domain for matched brand,
+                                           # None if brand has no DB entry
 
 
 # ──────────────────────────────────────────────────────────────
@@ -106,6 +108,19 @@ def _get_brands() -> tuple[set[str], dict]:
     for b in _FALLBACK_BRANDS:
         by_len[len(b)].append(b)
     return _FALLBACK_BRANDS, by_len
+
+
+def _get_brand_primary_domain(brand_name: str) -> Optional[str]:
+    """
+    Look up the primary official domain for a matched brand.
+    Returns None if the brand has no primary domain entry in the DB,
+    or if the DB is unavailable — callers must handle None gracefully.
+    """
+    try:
+        from db import get_brand_primary_domain
+        return get_brand_primary_domain(brand_name)
+    except Exception:
+        return None
 
 
 def _get_official_domains() -> set[str]:
@@ -299,6 +314,7 @@ def check_brand_impersonation(hostname: str) -> BrandCheckResult:
                 "or suffix — a common phishing pattern (e.g. paypal-secure.com)."
             ),
             normalized_sld=sld,
+            real_domain=_get_brand_primary_domain(prefix_brand),
         )
 
     # ── 3. Subdomain token check ─────────────────────────────
@@ -325,6 +341,7 @@ def check_brand_impersonation(hostname: str) -> BrandCheckResult:
                 similarity_score=round(score, 4),
                 message=msg,
                 normalized_sld=sld,
+                real_domain=_get_brand_primary_domain(brand),
             )
 
     # ── 4. SLD token check (hyphenated parts) ────────────────
@@ -346,7 +363,9 @@ def check_brand_impersonation(hostname: str) -> BrandCheckResult:
                 similarity_score=round(score, 4),
                 message=msg,
                 normalized_sld=sld,
+                real_domain=_get_brand_primary_domain(brand),
             )
+
 
     # ── 5. Whole-SLD ASCII fuzzy match ───────────────────────
     if sld.isascii():
@@ -396,6 +415,7 @@ def check_brand_impersonation(hostname: str) -> BrandCheckResult:
                         f"'{brand}' — high-confidence typosquatting."
                     ),
                     normalized_sld=sld,
+                    real_domain=_get_brand_primary_domain(brand),
                 )
 
             if score >= SIMILARITY_THRESHOLD:
@@ -409,6 +429,7 @@ def check_brand_impersonation(hostname: str) -> BrandCheckResult:
                         "— possible typosquatting."
                     ),
                     normalized_sld=sld,
+                    real_domain=_get_brand_primary_domain(brand),
                 )
 
         return BrandCheckResult(verdict="pass", message="No brand impersonation detected.")
@@ -464,6 +485,7 @@ def check_brand_impersonation(hostname: str) -> BrandCheckResult:
             ),
             had_unicode=True,
             normalized_sld=normalized,
+            real_domain=_get_brand_primary_domain(brand),
         )
 
     return BrandCheckResult(
