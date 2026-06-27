@@ -895,7 +895,7 @@ def _build_response(cr: CheckResults) -> dict:
         "is_phishing":           cr.is_phishing,
         "confidence_score":      round(cr.final_confidence, 4),
         "legitimate_confidence": round(1 - cr.final_confidence, 4),
-        "threshold_used":        ml.get("threshold_used", 0.661) if ml else 0.5,
+        "threshold_used":        ml.get("threshold_used", 0.44) if ml else 0.5,
         "status":                status,
         "risk_level":            _risk_level_from_confidence(cr.final_confidence),
         "recommendation":        rec,

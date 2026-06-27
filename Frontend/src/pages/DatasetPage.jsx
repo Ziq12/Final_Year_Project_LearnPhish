@@ -211,13 +211,13 @@ export default function DatasetPage() {
           <InfoCard title="🤖 Model: rf_v1" rows={[
             ['Algorithm',  'Random Forest Classifier'],
             ['Library',    'scikit-learn'],
-            ['Threshold',  '0.661'],
+            ['Threshold',  '0.44'],
             ['Features',   `${totalFeatures} lexical URL features`],
             ['DNS/HTTP',   'None — lexical-only, works offline'],
           ]} />
           <InfoCard title="🏷️ Label Assignment" rows={[
-            ['Label 1 (Phishing)', 'Heuristic block or RF model ≥ 0.661'],
-            ['Label 0 (Legit)', 'Passed all checks, model < 0.661'],
+            ['Label 1 (Phishing)', 'Heuristic block or RF model ≥ 0.44'],
+            ['Label 0 (Legit)', 'Passed all checks, model < 0.44'],
             ['Whitelisted', 'Excluded from dataset'],
             ['Query values', 'Redacted to REDACTED before storage'],
           ]} />

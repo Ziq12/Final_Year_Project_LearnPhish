@@ -47,30 +47,6 @@ const THREAT_DOMAINS = [
     ]
   },
   {
-    domain: 'Data Payload & Query Risks',
-    icon: '📦',
-    color: { accent: '#8b5cf6', bg: 'rgba(139,92,246,0.06)', border: 'rgba(139,92,246,0.15)' },
-    desc: 'Malicious use of query parameters to steal data or deliver payloads.',
-    features: [
-      { name: 'Sensitive Query Keys', code: 'has_sensitive_query_key', explanation: 'The URL explicitly requests sensitive keys like "user", "pass", or "token" in plain text, often used to pre-fill fake login forms.', example: 'https://site.com?user=admin&pass=123', trigger: 'Query parameter keys match a sensitive keyword list.' },
-      { name: 'URL in Query', code: 'has_url_in_query', explanation: 'Contains another URL inside the query string. Attackers use this to bypass filters or chain redirects to the final phishing page.', example: 'https://site.com?redirect=https://evil.com', trigger: 'Query parameter value contains "http://" or "https://".' },
-      { name: 'Double File Extension', code: 'has_double_file_extension', explanation: 'Uses a double extension to trick users into downloading malware, making a script look like an image.', example: 'https://site.com?file=invoice.jpg.exe', trigger: 'Regex detects multiple extensions in query values or path.' },
-      { name: 'Suspicious Path Extensions', code: 'suspicious_extension', explanation: 'The URL path ends in a file type often used for viruses or executable scripts (.exe, .scr, .zip).', example: 'https://site.com/downloads/update.scr', trigger: 'Path ends with a blacklisted executable extension.' }
-    ]
-  },
-  {
-    domain: 'Character & Symbol Analysis',
-    icon: '⚠️',
-    color: { accent: '#06b6d4', bg: 'rgba(6,182,212,0.06)', border: 'rgba(6,182,212,0.15)' },
-    desc: 'Unusual character frequencies and symbol abuse.',
-    features: [
-      { name: 'The "@" Symbol Trick', code: 'count_at', explanation: 'URLs containing "@" will redirect the browser to whatever comes AFTER the symbol, ignoring the text before it.', example: 'https://google.com@evil-phish.com', trigger: 'Presence of "@" anywhere in the URL authority/path.' },
-      { name: 'Hyphen Abuse', code: 'count_hyphens', explanation: 'Phishers use multiple hyphens to separate keywords and create look-alike domains, as legitimate brands rarely use many hyphens.', example: 'https://secure-login-bank-update.com', trigger: 'Count of "-" in the URL exceeds normal thresholds.' },
-      { name: 'Percent Encoding', code: 'count_percentage', explanation: 'Contains excessive URL-encoded characters (%), often used to hide malicious keywords or payloads from basic security filters.', example: 'https://site.com/%70%61%79%70%61%6C', trigger: 'Count of "%" characters is unusually high.' },
-      { name: 'Double Slash Redirect', code: 'count_double_slash', explanation: 'Contains "//" inside the path, a trick used to confuse browser address-bar parsing and simulate a new domain start.', example: 'https://legit.com/path//evil.com', trigger: 'Regex finds "//" after the initial protocol scheme.' }
-    ]
-  },
-  {
     domain: 'Advanced Content Patterns',
     icon: '🔬',
     color: { accent: '#ec4899', bg: 'rgba(236,72,153,0.06)', border: 'rgba(236,72,153,0.15)' },
@@ -111,7 +87,7 @@ export default function LearnPage() {
             The Anatomy of a Phishing URL
           </h1>
           <p className="text-sm leading-relaxed max-w-2xl mx-auto" style={{ color: 'var(--color-text-secondary)' }}>
-            LearnPhish evaluates {THREAT_DOMAINS.reduce((s, d) => s + d.features.length, 0)} distinct lexical features across 6 threat domains. 
+            LearnPhish evaluates {THREAT_DOMAINS.reduce((s, d) => s + d.features.length, 0)} distinct lexical features across 4 threat domains. 
             Explore the exact rules our engine uses to detect, block, and explain malicious links.
           </p>
         </div>

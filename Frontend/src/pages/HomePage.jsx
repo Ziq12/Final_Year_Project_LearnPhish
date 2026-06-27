@@ -1,24 +1,19 @@
 /**
  * HomePage — Brand page with mission, how-it-works, tech stack, then scan form.
  */
-import { useEffect }   from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react' // Added useState
+import { useNavigate }   from 'react-router-dom'
 import useScanStore    from '../store/useScanStore'
 import ErrorDisplay from '../components/result/ErrorDisplay'
 import MainHeader from '../components/layout/MainHeader' 
 import Footer from '../components/layout/Footer'          
 
 export default function HomePage() {
-  
-
   const error     = useScanStore(s => s.error)
   const reset     = useScanStore(s => s.reset)
   const startScan = useScanStore(s => s.startScan)
   const navigate  = useNavigate()
 
-  // Clear any stale scan state when the user lands on the home page.
-  // This prevents a previous failed-scan error from appearing in the form
-  // if the user navigated back without explicitly resetting.
   useEffect(() => { reset() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleScan(url) {
@@ -28,7 +23,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-base)' }}>
-
       {/* Subtle grid bg */}
       <div className="fixed inset-0 pointer-events-none" style={{ opacity: 0.025 }}>
         <div style={{
@@ -37,11 +31,9 @@ export default function HomePage() {
         }} />
       </div>
 
-      {/* Nav */}
       <MainHeader />
 
       <main className="flex-1 relative">
-
         {/* ── HERO ──────────────────────────────────────────── */}
         <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-7 text-xs font-semibold"
@@ -146,8 +138,8 @@ export default function HomePage() {
               {[
                 { step: '01', icon: '⚡', color: '#38bdf8', title: 'Parallel Checks', desc: 'Whitelist, blacklist, Google Safe Browsing, structural heuristics, and brand/DGA detection all run simultaneously.' },
                 { step: '02', icon: '🚦', color: '#34d399', title: 'Decision Gate', desc: 'If any check produces a high-confidence verdict (e.g. brand impersonation), ML is skipped — instant answer.' },
-                { step: '03', icon: '🧠', color: '#c084fc', title: 'ML Model', desc: 'For uncertain URLs, a Random Forest classifier analyses 56 features with a tuned 0.661 threshold.' },
-                { step: '04', icon: '📋', color: '#f59e0b', title: 'Explanation', desc: 'The Explainer Engine maps every triggered feature to one of 6 Threat Domains and produces plain-English reasons.' },
+                { step: '03', icon: '🧠', color: '#c084fc', title: 'ML Model', desc: 'For uncertain URLs, a Random Forest classifier analyses 56 features with a tuned 0.44 threshold.' },
+                { step: '04', icon: '📋', color: '#f59e0b', title: 'Explanation', desc: 'The Explainer Engine maps every triggered feature to one of 4 Threat Domains and produces plain-English reasons.' },
               ].map(({ step, icon, color, title, desc }) => (
                 <div key={step} className="p-5 rounded-2xl relative overflow-hidden"
                   style={{ background: 'var(--color-elevated)', border: `1px solid ${color}22` }}>
@@ -275,27 +267,69 @@ export default function HomePage() {
 
 /* ── Inline components ─────────────────────────────────── */
 function ScanHero({ onScan, error }) {
+  // 1. Add local state for form validation errors and the input value
+  const [formError, setFormError] = useState('')
+  const [inputValue, setInputValue] = useState('')
+
+  // 2. Strict validation function
+  function validate(val) {
+    const trimmed = val.trim();
+    
+    // Check for empty input
+    if (!trimmed) return 'Please enter a URL to check.';
+
+    // Strictly check if it starts with http:// or https://
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      return 'URL must start with http:// or https://';
+    }
+
+    // Use the native URL constructor to strictly validate the format and protocol
+    try {
+      const parsed = new URL(trimmed);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return `Unsupported protocol "${parsed.protocol}". Only HTTP and HTTPS are allowed.`;
+      }
+      return ''; // Valid
+    } catch {
+      return "That doesn't look like a valid web address. Please check the format.";
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
-    const url = e.target.url.value.trim()
-    if (!url) return
-    const final = url.startsWith('http') ? url : 'https://' + url
-    await onScan(final)
+    
+    const err = validate(inputValue);
+    if (err) {
+      setFormError(err);
+      return;
+    }
+    
+    setFormError('');
+    await onScan(inputValue.trim());
   }
 
   return (
     <div className="max-w-xl mx-auto mb-4">
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
         <input
-          name="url" type="text" autoFocus
+          name="url" 
+          type="text" 
+          autoFocus
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            if (formError) setFormError(''); // Clear error as user types
+          }}
           placeholder="https://suspicious-link.com/verify?id=12345"
           className="flex-1 text-sm px-4 py-3.5 rounded-xl font-mono transition-all"
           style={{
-            background: 'var(--color-surface)', border: '1px solid var(--color-border-md)',
-            color: 'var(--color-text-primary)', outline: 'none',
+            background: 'var(--color-surface)', 
+            border: formError ? '1px solid rgba(239,68,68,0.4)' : '1px solid var(--color-border-md)', // Red border on error
+            color: 'var(--color-text-primary)', 
+            outline: 'none',
           }}
           onFocus={e => e.currentTarget.style.borderColor = 'rgba(56,189,248,0.5)'}
-          onBlur={e => e.currentTarget.style.borderColor = 'var(--color-border-md)'}
+          onBlur={e => e.currentTarget.style.borderColor = formError ? 'rgba(239,68,68,0.4)' : 'var(--color-border-md)'}
         />
         <button type="submit"
           className="shrink-0 font-semibold text-sm px-7 py-3.5 rounded-xl transition-all active:scale-95"
@@ -306,7 +340,14 @@ function ScanHero({ onScan, error }) {
         </button>
       </form>
 
-      {/* Compact error display — handles the structured error object from useScanStore */}
+      {/* Display Form Validation Error */}
+      {formError && (
+        <p className="text-xs mt-2 text-left px-1" style={{ color: 'var(--color-danger)' }} role="alert">
+          {formError}
+        </p>
+      )}
+
+      {/* Display Backend Scan Error */}
       {error && (
         <ErrorDisplay error={error} compact />
       )}

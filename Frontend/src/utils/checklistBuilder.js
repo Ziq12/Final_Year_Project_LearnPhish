@@ -217,7 +217,7 @@ export function buildChecklist(data) {
   }
   const mlFeatures = (ex.triggered_features || [])
   const mlItems = h.ml_skipped
-    ? [{ id:'ml_skip', text:'ML model was not needed, a phishing pattern have been detected. ',
+    ? [{ id:'ml_skip', text:'ML model was not needed, a phishing pattern has been detected. ',
          tip:'When a very strong indicator is found, the ML model is skipped to save time.',
          part:'full', severity:'safe', present:false, measured:'' }]
     : mlFeatures.length
