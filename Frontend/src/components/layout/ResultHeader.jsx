@@ -41,6 +41,13 @@ export default function ResultHeader({ scanUrl, showReportButton, onReport }) {
             onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}>
             Dataset
           </button>
+          <button onClick={() => navigate('/extension')}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--color-info)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-secondary)'}>
+            Extension
+          </button>
         </div>
       </div>
     </header>

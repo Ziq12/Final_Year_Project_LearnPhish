@@ -6,9 +6,10 @@ export default function MainHeader() {
   const currentPath = location.pathname
 
   const navItems = [
-    { label: 'Scanner', path: '/' },
-    { label: 'Learn',   path: '/learn' },
-    { label: 'Dataset', path: '/dataset' },
+    { label: 'Scanner',   path: '/' },
+    { label: 'Learn',     path: '/learn' },
+    { label: 'Dataset',   path: '/dataset' },
+    { label: 'Extension', path: '/extension' },
   ]
 
   return (
