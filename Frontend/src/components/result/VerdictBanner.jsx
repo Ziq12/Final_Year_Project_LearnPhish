@@ -15,7 +15,8 @@ export default function VerdictBanner({ status, result, flaggedCount, totalCount
   const blockChip  = done && isPhishing ? buildBlockChip(result) : null
 
   if (isPhishing) return <PhishingBanner confidence={confidence} flaggedCount={flaggedCount} totalCount={totalCount} blockChip={blockChip} />
-  return <SafeBanner totalCount={totalCount} flaggedCount={flaggedCount} confidence={confidence} />
+  const safeChip = done && !isPhishing ? buildSafeChip(result) : null
+  return <SafeBanner totalCount={totalCount} flaggedCount={flaggedCount} confidence={confidence} safeChip={safeChip} />
 }
 
 /* ── Block reason chip builder ─────────────────────────── */
@@ -84,6 +85,19 @@ function buildBlockChip(result) {
   return { icon: '⚠️', label: 'Multiple Signals', sub: skipReason || 'Combined heuristic signals', color: 'warn' }
 }
 
+function buildSafeChip(result) {
+  if (result?.status === 'whitelisted') {
+    return { icon: '🛡️', label: 'Whitelist Match', sub: 'Explicitly allowed by administrator', color: 'safe' }
+  }
+  
+  if (result?.status === 'success') {
+    const mlConfidence = Math.round((result?.legitimate_confidence ?? 0) * 100)
+    return { icon: '🧠', label: 'ML Model', sub: `${mlConfidence}% legitimate probability`, color: 'safe' }
+  }
+  
+  return { icon: '✅', label: 'Heuristic Checks', sub: 'No malicious signals detected', color: 'safe' }
+}
+
 /* ── Sub-components ─────────────────────────────────────── */
 function ScanningState({ totalCount }) {
   return (
@@ -104,20 +118,23 @@ function ScanningState({ totalCount }) {
   )
 }
 
-function BlockedByChip({ chip }) {
+function ReasonChip({ chip }) {
   if (!chip) return null
   const colors = {
     danger: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', text: '#fca5a5', subText: 'rgba(252,165,165,0.65)' },
     warn:   { bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.3)', text: '#fde68a', subText: 'rgba(253,230,138,0.65)' },
+    safe:   { bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)', text: '#6ee7b7', subText: 'rgba(110,231,183,0.7)' },
   }
   const c = colors[chip.color] || colors.danger
+  const prefix = chip.color === 'safe' ? 'Allowed by:' : 'Blocked by:'
+  
   return (
     <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl"
       style={{ background: c.bg, border: `1px solid ${c.border}` }}>
       <span className="text-sm">{chip.icon}</span>
       <div>
         <span className="text-xs font-bold uppercase tracking-wider" style={{ color: c.text }}>
-          Blocked by: {chip.label}
+          {prefix} {chip.label}
         </span>
         {chip.sub && <p className="text-xs mt-0" style={{ color: c.subText }}>{chip.sub}</p>}
       </div>
@@ -149,14 +166,14 @@ function PhishingBanner({ confidence, flaggedCount, totalCount, blockChip }) {
               </span>
             )}
           </div>
-          <BlockedByChip chip={blockChip} />
+          <ReasonChip chip={blockChip} />
         </div>
       </div>
     </div>
   )
 }
 
-function SafeBanner({ totalCount, flaggedCount, confidence }) {
+function SafeBanner({ totalCount, flaggedCount, confidence, safeChip }) {
   return (
     <div className="rounded-2xl px-6 py-5 verdict-enter relative overflow-hidden scanlines"
       style={{ background: 'linear-gradient(135deg,rgba(52,211,153,0.1) 0%,rgba(52,211,153,0.04) 100%)', border: '1px solid rgba(52,211,153,0.3)' }}>
@@ -176,10 +193,11 @@ function SafeBanner({ totalCount, flaggedCount, confidence }) {
             {confidence != null && (
               <span className="text-xs px-3 py-1 rounded-full"
                 style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', color: '#6ee7b7' }}>
-                {Math.round((1 - confidence) * 100)}% safe confidence
+                {Math.round(confidence * 100)}% confidence
               </span>
             )}
           </div>
+          <ReasonChip chip={safeChip} />
         </div>
       </div>
     </div>
