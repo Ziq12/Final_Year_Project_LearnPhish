@@ -61,6 +61,8 @@ export default function FalsePositiveModal({ result, onClose }) {
          finalRule = 'google_safe_browsing';
       } else if (h.brand_check?.triggered_rule) {
          finalRule = h.brand_check.triggered_rule;
+      } else if (h.dga_check?.verdict === 'block' || h.dga_check?.verdict === 'suspicious') {
+         finalRule = h.dga_check.detections?.[0]?.rule || 'dga_algorithm';
       } else {
          const triggeredHeuristic = hAllChecks.find(c => c.triggered);
          if (triggeredHeuristic) {
@@ -74,8 +76,8 @@ export default function FalsePositiveModal({ result, onClose }) {
       let finalScore = null;
       if (h.brand_check?.similarity_score !== undefined && h.brand_check?.similarity_score !== null) {
           finalScore = h.brand_check.similarity_score;
-      } else if (result?.final_confidence !== undefined && result?.final_confidence !== null) {
-          finalScore = result.final_confidence;
+      } else if (result?.confidence_score !== undefined && result?.confidence_score !== null) {
+          finalScore = result.confidence_score;
       } else if (result?.explain?.overall_risk_score !== undefined && result?.explain?.overall_risk_score !== null) {
           finalScore = result.explain.overall_risk_score;
       }
