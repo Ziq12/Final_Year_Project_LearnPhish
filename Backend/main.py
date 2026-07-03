@@ -1820,8 +1820,7 @@ def approve_dispute(fp_id: int):
         "whitelisted": True,
         "cache_reloaded": True,
         "cache_stats": {
-            "whitelist": len(cache.whitelist),
-            "blacklist": len(cache.blacklist),
+            "brands": len(cache.brand_names),
         },
     }
 

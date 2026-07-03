@@ -50,11 +50,41 @@ export default function FalsePositiveModal({ result, onClose }) {
         finalNotes = reasonLabel
       }
 
+      // Determine triggered rule
+      let finalRule = null;
+      const hAllChecks = h.all_checks || [];
+      if (result?.status === 'whitelisted') {
+         finalRule = 'whitelist';
+      } else if (result?.status === 'blacklisted') {
+         finalRule = 'blacklist';
+      } else if (result?.gsb?.status === 'unsafe') {
+         finalRule = 'google_safe_browsing';
+      } else if (h.brand_check?.triggered_rule) {
+         finalRule = h.brand_check.triggered_rule;
+      } else {
+         const triggeredHeuristic = hAllChecks.find(c => c.triggered);
+         if (triggeredHeuristic) {
+             finalRule = triggeredHeuristic.rule;
+         } else if (result?.final_verdict === 'phishing' && (result?.status === 'success' || result?.status === 'phishing')) {
+             finalRule = 'ml_model';
+         }
+      }
+
+      // Determine similarity score
+      let finalScore = null;
+      if (h.brand_check?.similarity_score !== undefined && h.brand_check?.similarity_score !== null) {
+          finalScore = h.brand_check.similarity_score;
+      } else if (result?.final_confidence !== undefined && result?.final_confidence !== null) {
+          finalScore = result.final_confidence;
+      } else if (result?.explain?.overall_risk_score !== undefined && result?.explain?.overall_risk_score !== null) {
+          finalScore = result.explain.overall_risk_score;
+      }
+
       const body = {
         url:            result?.url || '',
         domain:         result?.parsed_url?.hostname || '',
-        triggered_rule: h.brand_check?.triggered_rule || (h.all_checks || []).find(c => c.triggered)?.rule || null,
-        similarity_score: null,
+        triggered_rule: finalRule,
+        similarity_score: finalScore,
         matched_brand:  h.brand_check?.matched_brand || null,
         
         // LOGIC CHANGE: Always send 'false_positive' to satisfy DB constraint
