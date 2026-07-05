@@ -3,7 +3,7 @@ heuristic.py
 ────────────
 Pre-ML heuristic engine.
 
-KEY DESIGN PRINCIPLE (TODO-1 + TODO-2):
+KEY DESIGN PRINCIPLE :
   Detection and explanation are now FULLY DECOUPLED.
 
   - EVERY check ALWAYS runs regardless of any earlier result.
@@ -38,7 +38,7 @@ from dga_detector import check_dga
 
 
 # ──────────────────────────────────────────────────────────────
-# Constants
+# Constants TLD, Keyword and blocked rule
 # ──────────────────────────────────────────────────────────────
 SUSPICIOUS_TLDS: set[str] = {
     'fit', 'tk', 'gp', 'ga', 'work', 'ml', 'date', 'wang', 'men', 'icu',

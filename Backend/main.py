@@ -1,42 +1,3 @@
-"""
-main.py
-───────
-LearnPhish FastAPI application — v5
-
-Architecture change (TODO-1 + TODO-2):
-  Detection and explanation are now FULLY DECOUPLED.
-
-  ALL checks ALWAYS run. The pipeline is:
-
-  ┌─────────────────────────────────────────────┐
-  │  DETECTION ENGINE  (always runs everything)  │
-  │                                              │
-  │  1. Whitelist check    (DB, O(1))            │
-  │  2. Blacklist check    (DB, O(1))            │
-  │  3. Structural rules   (10 rules, all eval)  │
-  │  4. Brand impersonation (always runs)        │
-  │  5. DGA detection      (always runs)         │
-  │  6. ML model           (if not high-conf)    │
-  └──────────────┬──────────────────────────────┘
-                 │  all_checks populated
-                 ▼
-  ┌─────────────────────────────────────────────┐
-  │  DECISION GATE                               │
-  │  Reads all_checks → picks final verdict      │
-  │  High confidence → skip ML                  │
-  │  Uncertain       → run ML                   │
-  └──────────────┬──────────────────────────────┘
-                 │
-                 ▼
-  ┌─────────────────────────────────────────────┐
-  │  RESPONSE BUILDER  (one unified format)      │
-  │  all_checks block always present & complete  │
-  │  Detection verdict + ML result merged        │
-  └─────────────────────────────────────────────┘
-
-Response shape is now UNIFIED — every response path returns
-the same keys, including a complete `all_checks` block.
-"""
 
 import asyncio
 import csv
@@ -58,14 +19,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi import Response
 
-# ML is now handled by the Hugging Face Space microservice.
-# See HF_ML_SERVICE_URL in your .env file.
+
 
 import db
 from heuristic import run_heuristics, HeuristicResult
 from explainer import explain, FEATURE_RULES
 
-from fastapi import Request                          # Fix #1 — Request must be imported
+from fastapi import Request                         
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -101,7 +61,7 @@ async def lifespan(app: FastAPI):
 ALLOWED_KEYS = [
     os.getenv("FRONTEND_API_KEY"),
     os.getenv("ADMIN_API_KEY"),
-    "abcdefghijklmnopqrstuvwxyz123456" # Your Specific Extension ID
+    "abcdefghijklmnopqrstuvwxyz123456"
 ]
 
 async def verify_api_key(x_api_key: str = Header(None)):
@@ -114,7 +74,7 @@ async def verify_api_key(x_api_key: str = Header(None)):
             },
         )
 # ──────────────────────────────────────────────────────────────
-# NEW: Strict Admin Guard (ONLY Allows ADMIN_API_KEY)
+# Admin Dashboard authentication
 # ──────────────────────────────────────────────────────────────
 async def verify_admin_key(x_api_key: str = Header(None)):
     admin_key = os.getenv("ADMIN_API_KEY")
@@ -138,13 +98,18 @@ app = FastAPI(
     lifespan=lifespan,
     dependencies=[Depends(verify_api_key)]
 )
-
+# ──────────────────────────────────────────────────────────────
 # Rate limiter (slowapi)
+# ──────────────────────────────────────────────────────────────
+
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app.state.limiter = limiter
 register_error_handlers(app)
 
-# CORS — allow browser extension origins and localhost (for dev)
+# ──────────────────────────────────────────────────────────────
+# CORS
+# ──────────────────────────────────────────────────────────────
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^(chrome-extension://.*|moz-extension://.*)$", 
@@ -225,8 +190,7 @@ def _row_to_feature_dict(row) -> dict:
     else:
         return {}
 
-    # 🔑 EXPLICIT MAPPING: Extractor Key -> Explainer Rule Name
-    # (Remove trailing spaces from explainer.py first for cleaner matching)
+    # Map Extractor Key -> Explainer Rule Name for consisten namming
     mapping = {
         "has_ip_address":           "have_IP",
         "uses_https":               "https_token",
@@ -325,12 +289,8 @@ def _domain_summary_to_dict(ds) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────
-# Thread pool for CPU-bound tasks in async context
+# CPU thread Setting
 # ──────────────────────────────────────────────────────────────
-# heuristic checks (brand fuzzy matching, DGA entropy, NLTK)
-# and DB lookups are CPU/IO-bound synchronous code.
-# Reduced to 3 workers for 1 vCPU deployment — 6 workers would cause
-# excessive context switching and degrade throughput on a single core.
 _executor = ThreadPoolExecutor(
     max_workers=2,
     thread_name_prefix="LearnPhish_worker",
@@ -344,12 +304,8 @@ def _normalise_gsb_url(url: str) -> str:
     Normalise a URL before sending to Google Safe Browsing v4.
 
     GSB canonicalisation rules (https://developers.google.com/safe-browsing/v4/urls-hashing):
-    - Keep the full path and query string — these are critical for phishing detection.
-      Stripping the query causes false negatives because many phishing URLs encode
-      the target brand/redirect in query parameters (e.g. ?url=https://paypal.com).
-    - Strip the URL fragment (#...) — browsers never send this to servers, and GSB
-      does not index it.
-    - Ensure the URL has a scheme so urlparse works correctly.
+    - Keep the full path and query string
+    - Strip the URL fragment (#...)
     """
     if "://" not in url:
         url = "https://" + url
@@ -367,12 +323,6 @@ def _check_gsb(url: str) -> dict:
       - MALWARE              : drive-by download and malware distribution pages
       - UNWANTED_SOFTWARE    : software that violates Google's policy
       - POTENTIALLY_HARMFUL_APPLICATION : mobile PHA (important for Android users)
-
-    Note: "PHISHING" is NOT a valid GSBv4 threatType enum value.
-    The correct type for phishing/social-engineering attacks is SOCIAL_ENGINEERING.
-
-    Runs in a thread pool executor (called via loop.run_in_executor) so it does
-    not block the FastAPI event loop.
     """
     if not GSB_API_KEY:
         return {"status": "disabled", "threats": [], "url_checked": url}
@@ -414,24 +364,10 @@ def _check_gsb(url: str) -> dict:
 # ──────────────────────────────────────────────────────────────
 async def _run_all_checks(cr: CheckResults) -> None:
     """
-    TODO-10: Runs whitelist, blacklist, and full heuristics concurrently.
-
-    Previously these ran sequentially:
-      whitelist → blacklist → heuristics (structural + brand + DGA)
-
-    Now they run in parallel via asyncio.gather() + a thread pool:
+    Run in parallel via asyncio.gather() + a thread pool:
       ┌─ whitelist check  ─┐
       ├─ blacklist check  ─┤  all start at the same time
       └─ run_heuristics() ─┘  (structural + brand + DGA inside)
-
-    heuristic.py's run_heuristics() already evaluates all 10 structural
-    rules + brand + DGA unconditionally (TODO-1/2). Those three sub-checks
-    run sequentially inside run_heuristics because they share parsed URL
-    data — but the heuristic call itself runs in parallel with the DB checks.
-
-    Wall-clock improvement on a typical URL:
-      Sequential: ~60ms (whitelist 5ms + blacklist 5ms + heuristics 50ms)
-      Parallel:   ~50ms (all overlap, bottleneck is heuristics)
     """
     loop = asyncio.get_running_loop()
 
@@ -443,11 +379,11 @@ async def _run_all_checks(cr: CheckResults) -> None:
 
     def _heuristics():
         return run_heuristics(cr.url)
-    # Google Safe Browsing check
+
     def _gsb():          
         return _check_gsb(cr.url)
 
-    # Launch all three concurrently on the thread pool
+    # Launch all three concurrently on the thread pool 
     wl_result, bl_result, heuristic_result, gsb_result = await asyncio.gather(
         loop.run_in_executor(_executor, _db_whitelist),
         loop.run_in_executor(_executor, _db_blacklist),
@@ -462,11 +398,7 @@ async def _run_all_checks(cr: CheckResults) -> None:
 
 
 # ──────────────────────────────────────────────────────────────
-# Verdict → confidence table
-# Maps which rule caused a block → a fixed representative confidence.
-# These are NOT thresholds — they are the displayed confidence value
-# shown to the user when ML did not run.
-# ML-produced confidence always supersedes these when ML runs.
+# Verdict to score 
 # ──────────────────────────────────────────────────────────────
 BLOCK_CONFIDENCE: dict[str, float] = {
     # DB checks — highest confidence (manually verified)
@@ -570,10 +502,6 @@ def _decision_gate(cr: CheckResults) -> bool:
       Heuristic BLOCK → verdict = phishing,  skip ML (high-confidence rule)
       Heuristic SUSPICIOUS or PASS → run ML
 
-    Confidence values are looked up from BLOCK_CONFIDENCE keyed by
-    WHICH rule caused the block — never computed from a severity number.
-    ML-produced confidence always supersedes these when ML runs.
-
     Returns True  → ML should be skipped
     Returns False → ML should run
     """
@@ -602,14 +530,13 @@ def _decision_gate(cr: CheckResults) -> bool:
     if cr.gsb_result and cr.gsb_result.get("status") == "malicious":
         threats = cr.gsb_result.get("threats", [])
         cr.final_verdict    = "phishing"
-        cr.final_confidence = 0.95  # Authoritative external intel
+        cr.final_confidence = 0.95  
         cr.is_phishing      = True
         cr.ml_skipped       = True
         cr.skip_reason      = f"Google Safe Browsing hit: {', '.join(threats)}"
         return True
 
     # ── Heuristic BLOCK: high-confidence rule fired ───────────
-    # Only "block" skips ML. "suspicious" and "pass" always go to ML.
     if h and h.verdict == "block":
         conf, reason        = _block_confidence(cr)
         cr.final_verdict    = "phishing"
@@ -620,15 +547,13 @@ def _decision_gate(cr: CheckResults) -> bool:
         return True
 
     # ── Suspicious or Pass: always run ML ────────────────────
-    # Even "suspicious" goes to ML — the heuristic flags are added
-    # as context but do not decide the final verdict alone.
     return False
 
 
 # ──────────────────────────────────────────────────────────────
 # Stage 3: ML model + explainer
 # ML inference is handled remotely by the Hugging Face Space.
-# The Explainer runs locally (no heavy dependencies needed).
+# The Explainer runs locally 
 # ──────────────────────────────────────────────────────────────
 async def _run_ml(cr: CheckResults) -> bool:
     """
@@ -651,17 +576,15 @@ async def _run_ml(cr: CheckResults) -> bool:
             resp = await client.post(
                 f"{HF_ML_SERVICE_URL}/predict",
                 json={"url": cr.url},
-                headers=headers,  # <--- Pass the headers here
+                headers=headers,  
             )
             resp.raise_for_status()
             data = resp.json()
             
-            # Optional: Log the prediction for debugging
-            # logging.getLogger("learnphish").info(f"Prediction for {cr.url}: {data}")
 
     except httpx.TimeoutException:
         import logging
-        # HF Space may be waking from sleep — surface as a recognisable error
+        # ML services Timeout
         logging.getLogger("learnphish").warning(
             "HF ML service timed out for URL: %s (HF_ML_TIMEOUT=%s s)",
             cr.url, HF_ML_TIMEOUT,
@@ -705,9 +628,6 @@ async def _run_ml(cr: CheckResults) -> bool:
 # ──────────────────────────────────────────────────────────────
 # Stage 4: Build unified response
 # ──────────────────────────────────────────────────────────────
-# ──────────────────────────────────────────────────────────────
-# Response sanitiser — converts numpy/non-serialisable types to plain Python
-# ──────────────────────────────────────────────────────────────
 def _sanitise(obj):
     """
     Recursively convert non-JSON-serialisable Python types to plain types.
@@ -728,8 +648,6 @@ def _sanitise(obj):
     if isinstance(obj, (list, tuple)):
         return [_sanitise(v) for v in obj]
 
-    # decimal.Decimal — psycopg2 returns this for NUMERIC/DECIMAL columns
-    # e.g. domain_blacklist.confidence is numeric(4,3)
     if isinstance(obj, decimal.Decimal):
         return float(obj)
 
@@ -747,17 +665,10 @@ def _sanitise(obj):
 
 
 # ──────────────────────────────────────────────────────────────
-# URL parser — server-side, accurate for complex domains
+# URL parser — server-side, accurate for complex domains use also in frontend
 # ──────────────────────────────────────────────────────────────
 def _parse_url_tldextract(url: str) -> dict:
     """
-    Parse a URL into its structural parts using tldextract.
-
-    tldextract uses the Mozilla Public Suffix List so it correctly
-    handles multi-part TLDs like .co.uk, .com.au, .co.jp — which
-    the browser's URL() constructor and a naive hostname.split('.')
-    both get wrong.
-
     Returns a dict with:
         protocol  — "https" or "http" (no colon)
         subdomain — everything left of the registered domain, e.g. "login.paypal"
@@ -767,9 +678,6 @@ def _parse_url_tldextract(url: str) -> dict:
         query     — query string including "?", e.g. "?redirect=paypal.com"
         hostname  — full hostname, e.g. "login.paypal.secure-update.com"
         full      — the original URL string
-
-    This dict is included as `parsed_url` in every API response so the
-    frontend urlParser.js can read it directly without any client-side parsing.
     """
     try:
         # urlparse gets protocol, path, query reliably even when tldextract
@@ -901,9 +809,7 @@ def _build_response(cr: CheckResults) -> dict:
         "recommendation":        rec,
         "skip_reason":           cr.skip_reason,
 
-        # Server-side URL parsing — accurate for all domain formats
-        # (bbc.co.uk, amazon.com.au, etc.) using tldextract + Mozilla PSL.
-        # Frontend urlParser.js reads this directly instead of parsing client-side.
+
         "parsed_url": _parse_url_tldextract(cr.url),
 
         # Complete heuristic data — all 10 structural checks always present
@@ -944,7 +850,7 @@ def redact_url_query(url: str) -> str:
 
 
 # ──────────────────────────────────────────────────────────────
-# Background ML Feature Logging
+# Background ML Feature Logging for dataset log
 # ──────────────────────────────────────────────────────────────
 async def _log_features_background(url: str, label: int) -> None:
     """
@@ -1185,7 +1091,7 @@ def dataset_download(
 
 
 # ──────────────────────────────────────────────────────────────
-# Admin endpoints (unchanged)
+# Admin endpoints
 # ──────────────────────────────────────────────────────────────
 class WhitelistEntry(BaseModel):
     domain: str
@@ -1264,7 +1170,6 @@ def get_brands(category: Optional[str] = None):
             brands = [dict(r) for r in cur.fetchall()]
             
             # 2. Fetch all domains and group them by brand name
-            # ✅ FIX: JOIN brand_domains with brands using brand_id to get the name
             cur.execute("""
                 SELECT b.name AS brand_name, bd.domain 
                 FROM brand_domains bd

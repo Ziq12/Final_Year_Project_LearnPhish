@@ -1,17 +1,4 @@
-"""
-brand_impersonation.py
-──────────────────────
-Two-stage brand impersonation detector.
-Brand data is sourced from the PostgreSQL database via the in-memory cache
-in db.py (loaded at startup, O(1) lookups at runtime).
 
-Falls back to a minimal hardcoded set if the DB is unavailable.
-
-v5.1 fixes:
-  • Hyphenated SLD parts checked individually  (paypai-security → "paypai" ≈ paypal)
-  • Subdomain tokens checked for brand names   (paypal.evil.com → subdomain "paypal")
-  • Typosquatting upgraded to block when token ≥ 0.85 (near-exact match)
-"""
 
 from __future__ import annotations
 
@@ -67,8 +54,9 @@ def load_fallback_brands(file_path: str) -> set[str]:
 
 _FALLBACK_BRANDS: set[str] = load_fallback_brands("scripts/allbrands.txt")
 
-
-# Thresholds
+# ──────────────────────────────────────────────────────────────
+# Thresholds similarity
+# ──────────────────────────────────────────────────────────────
 SIMILARITY_THRESHOLD      = 0.70   # suspicious (typosquatting)
 SIMILARITY_BLOCK_THRESHOLD = 0.80  # block (near-exact typosquatting, e.g. paypai ≈ paypal)
 LENGTH_TOLERANCE          = 2      # for whole-SLD matching

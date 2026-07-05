@@ -16,7 +16,7 @@ const THREAT_DOMAINS = [
     features: [
       { name: 'Raw IP Address', code: 'have_IP', explanation: 'Uses a numerical IP address instead of a domain name to hide ownership and bypass domain-based filters.', example: 'http://192.168.1.104/login.html', trigger: 'Hostname matches IPv4 or IPv6 regex pattern.' },
       { name: 'URL Shorteners', code: 'url_shortening', explanation: 'Uses a redirection service (like bit.ly) to mask the final malicious destination from the user.', example: 'https://bit.ly/3xYzAbC', trigger: 'Domain matches a known list of 80+ URL shortening services.' },
-      { name: 'Punycode / Homograph', code: 'punycode', explanation: 'Uses internationalized domain names (IDN) to create look-alike characters that impersonate a legitimate brand.', example: 'https://xn--pple-43a.com (аррӏе.com)', trigger: 'Hostname contains the "xn--" prefix.' },
+      { name: 'Punycode / Homograph', code: 'punycode', explanation: 'Uses internationalized domain names (IDN) to create look-alike characters that impersonate a legitimate brand.', example: 'https://www.аpple.com', trigger: 'Hostname contains the "xn--" prefix.' },
       { name: 'Embedded HTTP', code: 'count_http_token', explanation: "Includes another URL or 'http' inside the path/query to trick the browser into thinking it's a safe redirect.", example: 'https://legit.com/redirect?url=http://evil.com', trigger: 'Regex finds "http://" inside the path or query string.' },
       { name: 'Missing HTTPS', code: 'https_token', explanation: 'The site lacks a secure HTTPS connection. Legitimate banks universally use HTTPS; phishing kits often default to HTTP.', example: 'http://secure-bank-login.com', trigger: 'URL scheme is "http" instead of "https".' }
     ]
