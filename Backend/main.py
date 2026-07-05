@@ -1207,21 +1207,37 @@ def add_brand_domain(entry: BrandDomainEntry):
 
 @app.post("/api/feedback", tags=["Feedback"])
 def submit_false_positive(report: FalsePositiveReport):
+    # Redact query parameters before storing (e.g. ?token=12345 → ?token=REDACTED)
+    safe_url = redact_url_query(report.url)
     return db.report_false_positive(
-        report.url, report.domain, report.triggered_rule,
+        safe_url, report.domain, report.triggered_rule,
         report.similarity_score, report.matched_brand,
         report.user_feedback, report.notes,
     )
 
 @app.post("/api/cache/reload", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 def reload_cache():
-    """Reload brand data from DB. Whitelist/blacklist are in Redis — they expire automatically."""
+    """Reload brand data from DB into local memory. Whitelist/blacklist are served from Redis lazily."""
     db.load_cache()
     c = db.get_cache()
     return {
         "brands":           len(c.brand_names),
         "official_domains": len(c.brand_official_domains),
         "wl_bl_cache":      "Redis lazy (TTL={}s)".format(db._CACHE_TTL),
+    }
+
+
+@app.post("/api/cache/warmup", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
+def warmup_cache():
+    """Force a Redis cache warm-up, pre-populating whitelist/blacklist from the database."""
+    import time
+    t0 = time.perf_counter()
+    db.warm_up_redis_cache(limit=50000)
+    elapsed = round(time.perf_counter() - t0, 2)
+    return {
+        "status":  "ok",
+        "message": f"Redis cache warm-up completed in {elapsed}s",
+        "elapsed_seconds": elapsed,
     }
 
 

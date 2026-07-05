@@ -359,15 +359,34 @@ async function rejectDispute(id, blacklist, btn) {
 }
 
 async function syncCache() {
+  const btn = document.getElementById('btn-reload-cache');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Reloading…'; }
   try {
     const r = await adminFetch(`${API}/api/cache/reload`, { method: 'POST' });
     if (!r.ok) throw new Error(await r.text());
     const d = await r.json();
-    // ✅ FIX: Use the actual keys returned by your Python backend
-    showToast(`⟳ Cache synced — ${d.brands} brands · ${d.official_domains} official domains loaded`, 'ok');
+    showToast(`⟳ Cache reloaded — ${d.brands} brands · ${d.official_domains} official domains loaded`, 'ok');
     setCacheStatus(true);
   } catch (e) {
-    showToast(`❌ Cache sync failed: ${e.message}`, 'err');
+    showToast(`❌ Cache reload failed: ${e.message}`, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⟳ Reload Cache'; }
+  }
+}
+
+async function warmUpCache() {
+  const btn = document.getElementById('btn-warmup-redis');
+  if (btn) { btn.disabled = true; btn.textContent = '🔥 Warming Up…'; }
+  try {
+    const r = await adminFetch(`${API}/api/cache/warmup`, { method: 'POST' });
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    showToast(`🔥 Redis cache warmed up in ${d.elapsed_seconds}s`, 'ok');
+    setCacheStatus(true);
+  } catch (e) {
+    showToast(`❌ Redis warm-up failed: ${e.message}`, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔥 Warm Up Redis'; }
   }
 }
 

@@ -23,7 +23,8 @@
                 <div class="cache-dot"></div>
                 <span class="cache-label">Cache Out-of-Sync</span>
             </div>
-            <button class="btn btn-slate" onclick="syncCache()">⟳ Sync Cache</button>
+            <button id="btn-reload-cache" class="btn btn-slate" onclick="syncCache()">⟳ Reload Cache</button>
+            <button id="btn-warmup-redis" class="btn btn-slate" onclick="warmUpCache()">🔥 Warm Up Redis</button>
             <button class="btn btn-indigo" onclick="loadDashboard()">↻ Refresh</button>
             <button class="btn btn-rose" onclick="logout()">Logout</button>
         </div>
