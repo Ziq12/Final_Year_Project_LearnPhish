@@ -373,10 +373,7 @@ def check_brand_impersonation(hostname: str) -> BrandCheckResult:
             #     so brand impersonation must not double-flag it — that causes
             #     false positives on legitimate domains whose official entries
             #     may be absent or incomplete in the DB.
-            #   • The old "TLD-squatting" block here also had a fallthrough bug:
-            #     even if the official-domain check passed, execution would fall
-            #     through to the `score >= SIMILARITY_BLOCK_THRESHOLD` branch
-            #     below (1.0 >= 0.80) and block the domain as "typosquatting".
+
             if score == 1.0:
                 return BrandCheckResult(
                     verdict="pass",

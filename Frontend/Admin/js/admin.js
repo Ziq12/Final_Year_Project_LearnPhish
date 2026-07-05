@@ -423,53 +423,136 @@ async function loadDashboard() {
   }
 }
 
-// ── Zone 5: Database CRUD ───────────────────────────────────
-document.querySelectorAll('.db-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.db-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.db-tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-        loadCrudData(btn.dataset.tab);
-    });
-});
+// ── Zone 5: Database CRUD with Pagination ───────────────────
+
+const PAGE_SIZE = 10;
+
+// Per-tab state: current page + cached full dataset
+const crudState = {
+  whitelist: { page: 1, data: [] },
+  blacklist:  { page: 1, data: [] },
+  brands:     { page: 1, data: [] },
+  quiz:       { page: 1, data: [] },
+};
+
+/** Render numbered pagination controls into a container div */
+function renderPagination(containerId, tab, totalItems) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  const cur = crudState[tab].page;
+
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+  // Build page number buttons (show at most 5 around current)
+  const range = [];
+  const delta = 2;
+  for (let i = Math.max(1, cur - delta); i <= Math.min(totalPages, cur + delta); i++) {
+    range.push(i);
+  }
+
+  const pageButtons = range.map(p => `
+    <button class="page-btn ${p === cur ? 'active' : ''}"
+      onclick="goToPage('${tab}', ${p})"
+      ${p === cur ? 'disabled' : ''}>${p}</button>
+  `).join('');
+
+  const start = (cur - 1) * PAGE_SIZE + 1;
+  const end   = Math.min(cur * PAGE_SIZE, totalItems);
+
+  container.innerHTML = `
+    <span class="pagination-info">Showing ${start}–${end} of ${totalItems}</span>
+    <div class="pagination-controls">
+      <button class="page-btn" onclick="goToPage('${tab}', 1)" ${cur === 1 ? 'disabled' : ''}>«</button>
+      <button class="page-btn" onclick="goToPage('${tab}', ${cur - 1})" ${cur === 1 ? 'disabled' : ''}>‹</button>
+      ${pageButtons}
+      <button class="page-btn" onclick="goToPage('${tab}', ${cur + 1})" ${cur === totalPages ? 'disabled' : ''}>›</button>
+      <button class="page-btn" onclick="goToPage('${tab}', ${totalPages})" ${cur === totalPages ? 'disabled' : ''}>»</button>
+    </div>
+  `;
+}
+
+/** Navigate to a page within a tab without re-fetching */
+function goToPage(tab, page) {
+  crudState[tab].page = page;
+  renderCrudPage(tab);
+}
+window.goToPage = goToPage;
+
+/** Render the current page slice from cached data */
+function renderCrudPage(tab) {
+  const { page, data } = crudState[tab];
+  const start = (page - 1) * PAGE_SIZE;
+  const slice = data.slice(start, start + PAGE_SIZE);
+
+  if (tab === 'whitelist') {
+    document.getElementById('tbody-whitelist').innerHTML = slice.map(d => `
+      <tr>
+        <td class="domain-text">${d.domain}</td>
+        <td>${d.added_by || 'system'}</td>
+        <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="whitelist" data-id="${d.domain}">Delete</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+    renderPagination('pagination-whitelist', 'whitelist', data.length);
+  }
+
+  else if (tab === 'blacklist') {
+    document.getElementById('tbody-blacklist').innerHTML = slice.map(d => `
+      <tr>
+        <td class="domain-text">${d.domain}</td>
+        <td>${d.confidence}</td>
+        <td>${d.source || 'manual'}</td>
+        <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="blacklist" data-id="${d.domain}">Delete</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+    renderPagination('pagination-blacklist', 'blacklist', data.length);
+  }
+
+  else if (tab === 'brands') {
+    document.getElementById('tbody-brands').innerHTML = slice.map(b => `
+      <tr>
+        <td><strong>${b.name}</strong> <span style="color:var(--text-muted)">(${b.display_name || ''})</span></td>
+        <td>${b.domains ? b.domains.join(', ') : (b.domain || '-')}</td>
+        <td><button class="btn btn-rose" onclick="deleteBrand(this)" data-name="${b.name}">Delete</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+    renderPagination('pagination-brands', 'brands', data.length);
+  }
+
+  else if (tab === 'quiz') {
+    document.getElementById('tbody-quiz').innerHTML = slice.map(q => `
+      <tr>
+        <td>#${q.id}</td>
+        <td><span class="rule-badge">${q.domain}</span></td>
+        <td style="max-width:400px;">${q.question_text}</td>
+        <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="quiz" data-id="${q.id}">Delete</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+    renderPagination('pagination-quiz', 'quiz', data.length);
+  }
+}
 
 async function loadCrudData(tab) {
     try {
         if (tab === 'whitelist') {
-            const r = await adminFetch(`${API}/api/whitelist?limit=100`);
-            const data = await r.json();
-            document.getElementById('tbody-whitelist').innerHTML = data.map(d => `
-                <tr>
-                    <td class="domain-text">${d.domain}</td>
-                    <td>${d.added_by || 'system'}</td>
-                    <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="whitelist" data-id="${d.domain}">Delete</button></td>
-                </tr>
-            `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
-        } 
+            const r = await adminFetch(`${API}/api/whitelist?limit=1000`);
+            crudState.whitelist.data = await r.json();
+            crudState.whitelist.page = 1;
+            renderCrudPage('whitelist');
+        }
         else if (tab === 'blacklist') {
-            const r = await adminFetch(`${API}/api/blacklist?limit=100`);
-            const data = await r.json();
-            document.getElementById('tbody-blacklist').innerHTML = data.map(d => `
-                <tr>
-                    <td class="domain-text">${d.domain}</td>
-                    <td>${d.confidence}</td>
-                    <td>${d.source || 'manual'}</td>
-                    <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="blacklist" data-id="${d.domain}">Delete</button></td>
-                </tr>
-            `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
-        } 
+            const r = await adminFetch(`${API}/api/blacklist?limit=1000`);
+            crudState.blacklist.data = await r.json();
+            crudState.blacklist.page = 1;
+            renderCrudPage('blacklist');
+        }
         else if (tab === 'brands') {
             const r = await adminFetch(`${API}/api/brands`);
-            const data = await r.json();
-            document.getElementById('tbody-brands').innerHTML = data.map(b => `
-                <tr>
-                    <td><strong>${b.name}</strong> <span style="color:var(--text-muted)">(${b.display_name || ''})</span></td>
-                    <td>${b.domains ? b.domains.join(', ') : (b.domain || '-')}</td>
-                    <td><button class="btn btn-rose" onclick="deleteBrand(this)" data-name="${b.name}">Delete</button></td>
-                </tr>
-            `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
-        } 
+            crudState.brands.data = await r.json();
+            crudState.brands.page = 1;
+            renderCrudPage('brands');
+        }
         else if (tab === 'quiz') {
             // Load threat domains for dropdown
             const statsR = await adminFetch(`${API}/api/admin/stats`);
@@ -477,16 +560,10 @@ async function loadCrudData(tab) {
             const threatDomains = stats.zone3.domains.map(d => d.domain);
             document.getElementById('quiz-domain-select').innerHTML = threatDomains.map(d => `<option value="${d}">${d}</option>`).join('');
 
-                    const r = await adminFetch(`${API}/api/quiz/questions?limit=50`);
-        const data = await r.json();
-        document.getElementById('tbody-quiz').innerHTML = data.map(q => `
-             <tr>
-                 <td>#${q.id}</td>
-                 <td><span class="rule-badge">${q.domain}</span></td>
-                 <td style="max-width:400px;">${q.question_text}</td>
-                 <td><button class="btn btn-rose" onclick="deleteItem(this)" data-type="quiz" data-id="${q.id}">Delete</button></td>
-             </tr>
-        `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Empty</td></tr>';
+            const r = await adminFetch(`${API}/api/quiz/questions?limit=1000`);
+            crudState.quiz.data = await r.json();
+            crudState.quiz.page = 1;
+            renderCrudPage('quiz');
         }
     } catch (e) {
         console.error("CRUD Load Error:", e);
@@ -587,14 +664,30 @@ document.getElementById('form-quiz').addEventListener('submit', async (e) => {
 
 
 // ── Boot ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', loadDashboard);
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashboard();
+
+  // Tab switcher for Database Management
+  document.querySelectorAll('.db-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.db-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.db-tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+      loadCrudData(btn.dataset.tab);
+    });
+  });
+});
+
 setInterval(loadDashboard, 60_000);
 
 // Expose to window for inline HTML onclick handlers
-window.syncCache = syncCache;
+window.syncCache     = syncCache;
+window.warmUpCache   = warmUpCache;
 window.loadDashboard = loadDashboard;
 window.approveDispute = approveDispute;
-window.rejectDispute = rejectDispute;
-window.logout = logout;
-window.deleteItem = deleteItem;
-window.deleteBrand = deleteBrand;
+window.rejectDispute  = rejectDispute;
+window.logout        = logout;
+window.deleteItem    = deleteItem;
+window.deleteBrand   = deleteBrand;
+window.goToPage      = goToPage;

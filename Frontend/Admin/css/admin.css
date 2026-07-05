@@ -413,3 +413,47 @@ body {
 }
 .crud-form textarea { min-height: 60px; resize: vertical; }
 .crud-form button { flex: none; }
+
+/* ── Pagination ────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 4px 4px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pagination-info {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.page-btn {
+  padding: 4px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.page-btn:hover:not(:disabled) {
+  border-color: var(--indigo);
+  color: var(--indigo);
+}
+.page-btn.active {
+  background: var(--indigo);
+  border-color: var(--indigo);
+  color: #0f172a;
+  font-weight: 700;
+}
+.page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
